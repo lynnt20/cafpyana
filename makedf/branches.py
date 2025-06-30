@@ -81,7 +81,12 @@ pfpbranches = [
     pfpbranch + "trackScore",
     pfpbranch + "parent",
     pfpbranch + "id",
-    pfpbranch + "t0",
+    # pfpbranch + "t0",
+    # pfpbranch + "razzled.electronScore", 
+    # pfpbranch + "razzled.protonScore",
+    # pfpbranch + "razzled.muonScore",
+    # pfpbranch + "razzled.pionScore",
+    # pfpbranch + "razzled.photonScore",
 ] + pfobranches
 
 pfp_daughter_branch = [
@@ -94,6 +99,8 @@ trkbranches = [
     trkbranch + "end.x", trkbranch + "end.y", trkbranch + "end.z",
     trkbranch + "dir.x", trkbranch + "dir.y", trkbranch + "dir.z",
     trkbranch + "len",
+    trkbranch + "costh",
+    trkbranch + "phi",
     trkbranch + "rangeP.p_muon",
     trkbranch + "mcsP.fwdP_muon",
     trkbranch + "rangeP.p_pion",
@@ -111,12 +118,27 @@ trkbranches = [
 ] + pfpbranches
 
 trkmcsbranches = [
-  trkbranch + "mcsP.seg_length",
-  trkbranch + "mcsP.seg_scatter_angles",
+    trkbranch + "mcsP.seg_length",
+    trkbranch + "mcsP.seg_scatter_angles",
 ]
 
 shwbranches = [
-  shwbranch + "len"
+    shwbranch + "start.x", shwbranch + "start.y", shwbranch + "start.z",
+    shwbranch + "end.x",   shwbranch + "end.y", shwbranch + "end.z",
+    shwbranch + 'conversion_gap', 
+    shwbranch + "density",
+    shwbranch + "open_angle",
+    shwbranch + 'bestplane',
+    shwbranch + 'bestplane_dEdx', shwbranch + 'bestplane_energy',
+    shwbranch + 'plane.0.dEdx',   shwbranch + 'plane.1.dEdx', shwbranch + 'plane.2.dEdx',
+    shwbranch + 'plane.0.energy', shwbranch + 'plane.1.energy', shwbranch + 'plane.2.energy',
+    shwbranch + 'plane.0.nHits',  shwbranch + 'plane.1.nHits',  shwbranch + 'plane.2.nHits',
+    shwbranch + "len",
+    shwbranch + "truth.eff",
+    shwbranch + "truth.pur",
+    shwbranch + "truth.p.pdg",
+    shwbranch + "truth.p.startE",
+    shwbranch + "truth.p.endE"
 ]
 
 trkhitadcbranches = [
@@ -157,12 +179,18 @@ slcbranches = [
     "rec.slc.is_clear_cosmic",
     "rec.slc.vertex.x", "rec.slc.vertex.y", "rec.slc.vertex.z",
     "rec.slc.self",
+    "rec.slc.nuid.crlongtrkdiry",
+    "rec.slc.nu_score"
+    "rec.slc.crumbs_result.score",
+    "rec.slc.opt0.tpc",
+    "rec.slc.opt0.score",
+    "rec.slc.opt0.time",
+    "rec.slc.opt0.measPE",
+    "rec.slc.opt0.hypoPE"
     "rec.slc.tmatch.eff",
     "rec.slc.tmatch.pur",
     "rec.slc.tmatch.index",
     "rec.slc.producer",
-    "rec.slc.nuid.crlongtrkdiry",
-    "rec.slc.nu_score"
 ]
 
 mcbranches = [
@@ -187,6 +215,8 @@ mcbranches = [
 
 mcprimbranches = [
     "rec.mc.nu.prim.genE",
+    "rec.mc.nu.prim.startE",
+    "rec.mc.nu.prim.endE",
     "rec.mc.nu.prim.length",
     "rec.mc.nu.prim.pdg",
     "rec.mc.nu.prim.genp.x",

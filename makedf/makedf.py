@@ -98,6 +98,49 @@ def make_trkdf(f, scoreCut=False, requiret0=False, requireCosmic=False, mcs=Fals
 
     return trkdf
 
+def make_shw_df(f):
+    shwdf = loadbranches(f["recTree"], shwbranches)
+    shwdf = shwdf.rec.slc.reco
+    
+    # # shower best plane fix
+    # col_nhits0 = "pfp.shw.plane.0.nHits"; col_nhits1 = "pfp.shw.plane.1.nHits"; col_nhits2 = "pfp.shw.plane.2.nHits"
+    # col_energy0 = "pfp.shw.plane.0.energy"; col_energy1 = "pfp.shw.plane.1.energy"; col_energy2 = "pfp.shw.plane.2.energy"
+    # col_dEdx0 = "pfp.shw.plane.0.dEdx"; col_dEdx1 = "pfp.shw.plane.1.dEdx"; col_dEdx2 = "pfp.shw.plane.2.dEdx"
+    
+    # # conditions to check 
+    # nhits2 = ((shwdf[col_nhits2] >= shwdf[col_nhits1]) & (shwdf[col_nhits2] >= shwdf[col_nhits0]))
+    # nhits1 = ((shwdf[col_nhits1] >= shwdf[col_nhits2]) & (shwdf[col_nhits1] >= shwdf[col_nhits0]))
+    # nhits0 = ((shwdf[col_nhits0] >= shwdf[col_nhits1]) & (shwdf[col_nhits0] >= shwdf[col_nhits2]))
+    
+    # # if energy[plane] > 0
+    # energy2 = (shwdf[col_energy2] > 0); energy1 = (shwdf[col_energy1] > 0); energy0 = (shwdf[col_energy0] > 0)
+    
+    # conditions = [(nhits2 & energy2), (nhits1 & energy1), (nhits0 & energy0),
+    #               (~(nhits2 & energy2) & energy1 & (shwdf[col_nhits1]>= shwdf[col_nhits0])),
+    #               (~(nhits2 & energy2) & energy0 & (shwdf[col_nhits0]>= shwdf[col_nhits1])),
+    #               (~(nhits1 & energy1) & energy2 & (shwdf[col_nhits2]>= shwdf[col_nhits0])),
+    #               (~(nhits1 & energy1) & energy0 & (shwdf[col_nhits0]>= shwdf[col_nhits2])),
+    #               (~(nhits0 & energy0) & energy2 & (shwdf[col_nhits2]>= shwdf[col_nhits1])),
+    #               (~(nhits0 & energy0) & energy1 & (shwdf[col_nhits1]>= shwdf[col_nhits2])),
+    #               ((shwdf[col_nhits2]<0) & (shwdf[col_nhits1]<0) & (shwdf[col_nhits0]<0))]
+    # shw_energy_choices = [shwdf[col_energy2], shwdf[col_energy1], shwdf[col_energy0],
+    #                       shwdf[col_energy1], shwdf[col_energy0], shwdf[col_energy2],
+    #                       shwdf[col_energy0], shwdf[col_energy2], shwdf[col_energy1], -1]
+    # shw_plane_choices  = [2, 1, 0, 1, 0, 2, 0, 2, 1, -1]
+    # shw_dEdx_choices   = [shwdf[col_dEdx2], shwdf[col_dEdx1], shwdf[col_dEdx0],
+    #                       shwdf[col_dEdx1], shwdf[col_dEdx0], shwdf[col_dEdx2],
+    #                       shwdf[col_dEdx0], shwdf[col_dEdx2], shwdf[col_dEdx1], -1]
+    
+    # # add a new column to the multilevel dataframe
+    # shwdf[('pfp','shw',"bestplane")] = np.select(conditions, shw_plane_choices, default=-1)
+    # shwdf[('pfp','shw',"bestplane_energy")] = np.select(conditions, shw_energy_choices, default=-1)
+    # shwdf[('pfp','shw',"bestplane_dEdx")] = np.select(conditions, shw_dEdx_choices, default=-1)
+    
+    # shwdf[("pfp", "tindex", "", "", "", "")] = shwdf.index.get_level_values(2)
+    
+    return shwdf
+    
+    
 def make_trkhitdf(f):
     df = loadbranches(f["recTree"], trkhitbranches).rec.slc.reco.pfp.trk.calo.I2.points
 
@@ -173,13 +216,16 @@ def make_mcdf(f, branches=mcbranches, primbranches=mcprimbranches):
 
     return mcdf
 
-def make_pandora_df(f, trkScoreCut=False, trkDistCut=10., cutClearCosmic=False, requireFiducial=False, **trkArgs):
+def make_pandora_df(f, trkScoreCut=False, trkDistCut=10., cutClearCosmic=True, requireFiducial=False, **trkArgs):
     # load
     trkdf = make_trkdf(f, trkScoreCut, **trkArgs)
+    shwdf = make_shw_df(f)
     slcdf = make_slcdf(f)
 
     # merge in tracks
     slcdf = multicol_merge(slcdf, trkdf, left_index=True, right_index=True, how="right", validate="one_to_many")
+    # merge in showers
+    slcdf = multicol_merge(slcdf, shwdf, left_index=True, right_index=True, how="right", validate="one_to_many")
 
     # distance from vertex to track start
     slcdf = multicol_add(slcdf, dmagdf(slcdf.slc.vertex, slcdf.pfp.trk.start).rename(("pfp", "dist_to_vertex")))
