@@ -3,18 +3,18 @@
 export machine=${HOSTNAME}
 if [[ $machine == *sbnd* || $machine == *jupyter* ]]; then
   echo "working on a sbnd machine"
-  source /cvmfs/larsoft.opensciencegrid.org/spack-packages/setup-env.sh
+  source /cvmfs/larsoft.opensciencegrid.org/spack-v0.22.0-fermi/setup-env.sh
   export CAFPYANA_GRID_OUT_DIR="/pnfs/sbnd/scratch/users/$USER/cafpyana_out"
   mkdir -p $CAFPYANA_GRID_OUT_DIR
 fi
 if [[ $machine == *icarus* ]]; then
   echo "working on a icarus machine"
-  source /cvmfs/larsoft.opensciencegrid.org/spack-packages/setup-env.sh
+  source /cvmfs/larsoft.opensciencegrid.org/spack-v0.22.0-fermi/setup-env.sh
   export CAFPYANA_GRID_OUT_DIR="/pnfs/icarus/scratch/users/$USER/cafpyana_out"
   mkdir -p $CAFPYANA_GRID_OUT_DIR
 fi
-spack load hdf5@1.14.3
-spack load xrootd@5.6.1
+spack load hdf5@1.14.3%gcc@12.2.0 arch=linux-almalinux9-x86_64_v3
+spack load xrootd@5.6.9%gcc@12.2.0
 
 ######################################################
 #### setup virtual python env if it is not already set
@@ -60,6 +60,25 @@ cd ..
 #cd dune_plot_style-01_01/
 #python3 -m pip install .
 #cd ../..
+
+######################################################
+# need to install uuid in the EAF
+######################################################
+if [[ $machine == *jupyter* ]]; then
+    echo "Installing uuid for since you are in EAF"
+    wget https://www.kernel.org/pub/linux/utils/util-linux/v2.39/util-linux-2.39.3.tar.xz
+    tar xvf util-linux-2.39.3.tar.xz
+    rm util-linux-2.39.3.tar.xz
+    cd util-linux-2.39.3
+    ./configure --prefix="$(pwd)/local" --disable-all-programs --enable-libuuid
+    make -j$(nproc)
+    make install
+    export C_INCLUDE_PATH="$(pwd)/local/include:$C_INCLUDE_PATH"
+    export CPLUS_INCLUDE_PATH="$(pwd)/local/include:$CPLUS_INCLUDE_PATH"
+    export LD_LIBRARY_PATH="$(pwd)/local/lib:$LD_LIBRARY_PATH"
+    export PKG_CONFIG_PATH="$(pwd)/local/lib/pkgconfig:$PKG_CONFIG_PATH"
+    cd ../
+fi
 
 ######################################################
 # Needed to install xrootd -- which, by the way, is super annoying
