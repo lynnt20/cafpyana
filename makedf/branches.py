@@ -12,17 +12,17 @@ mchdrbranches = [
 ]
 
 hdrbranches = [
-    "rec.hdr.pot",
-    "rec.hdr.first_in_subrun",
-    "rec.hdr.ismc",
+    # "rec.hdr.pot",
+    # "rec.hdr.first_in_subrun",
+    # "rec.hdr.ismc",
     "rec.hdr.run",
     "rec.hdr.subrun",
-    "rec.hdr.ngenevt",
-    "rec.hdr.evt",
-    "rec.hdr.proc",
-    "rec.hdr.cluster",
-    "rec.hdr.fno",
-    "rec.hdr.noffbeambnb",
+    # "rec.hdr.ngenevt",
+    # "rec.hdr.evt",
+    # "rec.hdr.proc",
+    # "rec.hdr.cluster",
+    # "rec.hdr.fno",
+    # "rec.hdr.noffbeambnb",
 
     # "rec.hdr.triggerinfo.trigger_id",
     # "rec.hdr.triggerinfo.gate_id",
@@ -31,6 +31,13 @@ hdrbranches = [
     # "rec.hdr.triggerinfo.gate_delta",
     # "rec.hdr.triggerinfo.global_trigger_time",
     # "rec.hdr.triggerinfo.prev_global_trigger_time",
+]
+
+bnbspillbranches  = [
+    "rec.hdr.spillbnbinfo.event",
+    "rec.hdr.spillbnbinfo.TOR860",
+    "rec.hdr.spillbnbinfo.TOR875",
+    "rec.hdr.spillbnbinfo.THCURR",
 ]
 
 numipotbranches = [
