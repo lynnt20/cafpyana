@@ -44,6 +44,10 @@ def make_potdf_sbnd(f):
     pot = loadbranches(f["recTree"], sbndpotbranches).rec.hdr.bnbinfo
     return pot
 
+def make_spilldf_sbnd(f):
+    spill = loadbranches(f["recTree"],sbndspillbranches).rec.hdr.spillbnbinfo
+    return spill
+
 def make_potdf_icarus(f):
     pot = loadbranches(f["recTree"], potbranches).rec.hdr.numiinfo
     return pot
@@ -209,18 +213,23 @@ def make_mcdf(f, branches=mcbranches, primbranches=mcprimbranches):
         mcdf = multicol_add(mcdf, ((np.abs(mcprimdf.pdg)==PDG[particle][0]) & (this_KE > threshold)).groupby(level=[0,1]).sum().rename(identifier))
  
     # lepton info
-    mudf = mcprimdf[np.abs(mcprimdf.pdg)==13].sort_values(mcprimdf.index.names[:2] + [("genE", "")]).groupby(level=[0,1]).last()
-    mudf.columns = pd.MultiIndex.from_tuples([tuple(["mu"] + list(c)) for c in mudf.columns])
+    edf = mcprimdf[np.abs(mcprimdf.pdg)==11].sort_values(mcprimdf.index.names[:2] + [("genE", "")]).groupby(level=[0,1]).last()
+    edf.columns = pd.MultiIndex.from_tuples([tuple(["e"] + list(c)) for c in edf.columns])
+    
+    mcdf = multicol_merge(mcdf, edf, left_index=True, right_index=True, how="left", validate="one_to_one")
+    
+    # mudf = mcprimdf[np.abs(mcprimdf.pdg)==13].sort_values(mcprimdf.index.names[:2] + [("genE", "")]).groupby(level=[0,1]).last()
+    # mudf.columns = pd.MultiIndex.from_tuples([tuple(["mu"] + list(c)) for c in mudf.columns])
 
-    cpidf = mcprimdf[np.abs(mcprimdf.pdg)==211].sort_values(mcprimdf.index.names[:2] + [("genE", "")]).groupby(level=[0,1]).last()
-    cpidf.columns = pd.MultiIndex.from_tuples([tuple(["cpi"] + list(c)) for c in cpidf.columns])
+    # cpidf = mcprimdf[np.abs(mcprimdf.pdg)==211].sort_values(mcprimdf.index.names[:2] + [("genE", "")]).groupby(level=[0,1]).last()
+    # cpidf.columns = pd.MultiIndex.from_tuples([tuple(["cpi"] + list(c)) for c in cpidf.columns])
 
-    pdf = mcprimdf[mcprimdf.pdg==2212].sort_values(mcprimdf.index.names[:2] + [("genE", "")]).groupby(level=[0,1]).last()
-    pdf.columns = pd.MultiIndex.from_tuples([tuple(["p"] + list(c)) for c in pdf.columns])
+    # pdf = mcprimdf[mcprimdf.pdg==2212].sort_values(mcprimdf.index.names[:2] + [("genE", "")]).groupby(level=[0,1]).last()
+    # pdf.columns = pd.MultiIndex.from_tuples([tuple(["p"] + list(c)) for c in pdf.columns])
 
-    mcdf = multicol_merge(mcdf, mudf, left_index=True, right_index=True, how="left", validate="one_to_one")
-    mcdf = multicol_merge(mcdf, cpidf, left_index=True, right_index=True, how="left", validate="one_to_one")
-    mcdf = multicol_merge(mcdf, pdf, left_index=True, right_index=True, how="left", validate="one_to_one")
+    # mcdf = multicol_merge(mcdf, mudf, left_index=True, right_index=True, how="left", validate="one_to_one")
+    # mcdf = multicol_merge(mcdf, cpidf, left_index=True, right_index=True, how="left", validate="one_to_one")
+    # mcdf = multicol_merge(mcdf, pdf, left_index=True, right_index=True, how="left", validate="one_to_one")
 
     return mcdf
 
@@ -228,20 +237,15 @@ def make_mcprimdf(f):
     mcprimdf = loadbranches(f["recTree"], mcprimbranches)
     return mcprimdf
 
-def make_pandora_df(f, trkScoreCut=False, trkDistCut=10., cutClearCosmic=False, requireFiducial=False, **trkArgs):
+def make_pandora_df(f, trkScoreCut=False, trkDistCut=0., cutClearCosmic=False, requireFiducial=False, **trkArgs):
     # load
     trkdf = make_trkdf(f, trkScoreCut, **trkArgs)
-    shwdf = make_shw_df(f)
     slcdf = make_slcdf(f)
 
     # merge in tracks
     slcdf = multicol_merge(slcdf, trkdf, left_index=True, right_index=True, how="right", validate="one_to_many")
-    # merge in showers
-    slcdf = multicol_merge(slcdf, shwdf, left_index=True, right_index=True, how="right", validate="one_to_many")
 
     # distance from vertex to track start
-    slcdf = multicol_add(slcdf, dmagdf(slcdf.slc.vertex, slcdf.pfp.trk.start).rename(("pfp", "dist_to_vertex")))
-
     if trkDistCut > 0:
         slcdf = slcdf[slcdf.pfp.dist_to_vertex < trkDistCut]
     if cutClearCosmic:
@@ -251,6 +255,13 @@ def make_pandora_df(f, trkScoreCut=False, trkDistCut=10., cutClearCosmic=False, 
         slcdf = slcdf[InFV(slcdf.slc.vertex, 50)]
 
     return slcdf
+
+def make_hdrspill_df(f):
+    hdrdf = loadbranches(f["recTree"], hdrbranches).rec.hdr
+    spilldf = make_spilldf_sbnd(f)
+    spillhdr_df = pd.merge(hdrdf, spilldf, on='entry',how='left')
+
+    return spillhdr_df
 
 def make_spine_df(f, trkDistCut=-1, requireFiducial=True, **trkArgs):
     # load

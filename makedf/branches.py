@@ -1,13 +1,11 @@
 mchdrbranches = [
     "rec.hdr.pot",
     "rec.hdr.first_in_subrun",
-    "rec.hdr.ismc",
     "rec.hdr.run",
     "rec.hdr.subrun",
     "rec.hdr.ngenevt",
     "rec.hdr.evt",
     "rec.hdr.proc",
-    "rec.hdr.cluster",
     "rec.hdr.fno",
 ]
 
@@ -22,7 +20,8 @@ hdrbranches = [
     "rec.hdr.proc",
     "rec.hdr.cluster",
     "rec.hdr.fno",
-
+    "rec.hdr.noffbeambnb",
+    "rec.hdr.nbnbinfo",
     # "rec.hdr.triggerinfo.trigger_id",
     # "rec.hdr.triggerinfo.gate_id",
     # "rec.hdr.triggerinfo.trigger_count",
@@ -30,6 +29,13 @@ hdrbranches = [
     # "rec.hdr.triggerinfo.gate_delta",
     # "rec.hdr.triggerinfo.global_trigger_time",
     # "rec.hdr.triggerinfo.prev_global_trigger_time",
+]
+
+sbndspillbranches  = [
+    "rec.hdr.spillbnbinfo.event",
+    "rec.hdr.spillbnbinfo.TOR860",
+    "rec.hdr.spillbnbinfo.TOR875",
+    "rec.hdr.spillbnbinfo.THCURR",
 ]
 
 icaruspotbranches = [
@@ -41,8 +47,10 @@ icaruspotbranches = [
 ]
 
 sbndpotbranches = [
+    "rec.hdr.bnbinfo.event",
     "rec.hdr.bnbinfo.TOR860",
     "rec.hdr.bnbinfo.TOR875",
+    "rec.hdr.bnbinfo.THCURR",
 ]
 
 trueparticlenames = [
@@ -50,6 +58,7 @@ trueparticlenames = [
     "end_process",
     "pdg",
     "startE",
+    "endE",
     "start.x", "start.y", "start.z",
     "end.x", "end.y", "end.z",
     "genp.x", "genp.y", "genp.z",
@@ -57,6 +66,7 @@ trueparticlenames = [
     "G4ID",
     "parent",
     "cont_tpc",
+    "contained",
     "genE",
     "interaction_id"
 ]
@@ -106,18 +116,19 @@ trkbranches = [
     trkbranch + "len",
     trkbranch + "costh",
     trkbranch + "phi",
-    trkbranch + "rangeP.p_muon",
-    trkbranch + "mcsP.fwdP_muon",
-    trkbranch + "rangeP.p_pion",
-    trkbranch + "mcsP.fwdP_pion",
-    trkbranch + "rangeP.p_proton",
-    trkbranch + "mcsP.fwdP_proton",
-    trkbranch + "bestplane",
-    trkbranch + "crthit.distance",
-    trkbranch + "crthit.hit.time",
-    trkbranch + "crthit.hit.pe",
+    # trkbranch + "rangeP.p_muon",
+    # trkbranch + "mcsP.fwdP_muon",
+    # trkbranch + "rangeP.p_pion",
+    # trkbranch + "mcsP.fwdP_pion",
+    # trkbranch + "rangeP.p_proton",
+    # trkbranch + "mcsP.fwdP_proton",
+    # trkbranch + "bestplane",
+    # trkbranch + "crthit.distance",
+    # trkbranch + "crthit.hit.time",
+    # trkbranch + "crthit.hit.pe",
     trkbranch + "chi2pid.2.pid_ndof",
     trkbranch + "chi2pid.2.chi2_muon",
+    trkbranch + "chi2pid.2.chi2_pion",
     trkbranch + "chi2pid.2.chi2_proton",
     trkbranch + "chi2pid.2.pida",
 ] + pfpbranches
@@ -141,9 +152,6 @@ shwbranches = [
     shwbranch + "len",
     shwbranch + "truth.eff",
     shwbranch + "truth.pur",
-    shwbranch + "truth.p.pdg",
-    shwbranch + "truth.p.startE",
-    shwbranch + "truth.p.endE"
 ]
 
 trkhitadcbranches = [
@@ -178,20 +186,20 @@ trkhitbranches = trkhitbranches_perplane(2)
 trkhitbranches_P1 = trkhitbranches_perplane(1)
 trkhitbranches_P0 = trkhitbranches_perplane(0)
 
-for n in trueparticlenames: trkbranches.append(trkbranch + "truth.p." + n)
+for n in trueparticlenames: shwbranches.append(shwbranch + "truth.p." + n)
 
 slcbranches = [
     "rec.slc.is_clear_cosmic",
     "rec.slc.vertex.x", "rec.slc.vertex.y", "rec.slc.vertex.z",
     "rec.slc.self",
     "rec.slc.nuid.crlongtrkdiry",
-    "rec.slc.nu_score"
+    "rec.slc.nu_score",
     "rec.slc.crumbs_result.score",
     "rec.slc.opt0.tpc",
     "rec.slc.opt0.score",
     "rec.slc.opt0.time",
     "rec.slc.opt0.measPE",
-    "rec.slc.opt0.hypoPE"
+    "rec.slc.opt0.hypoPE",
     "rec.slc.tmatch.eff",
     "rec.slc.tmatch.pur",
     "rec.slc.tmatch.index",
