@@ -38,7 +38,7 @@ sbndspillbranches  = [
     "rec.hdr.spillbnbinfo.THCURR",
 ]
 
-icaruspotbranches = [
+numipotbranches = [
     "rec.hdr.numiinfo.spill_time_s",
     "rec.hdr.numiinfo.spill_time_ns",
     "rec.hdr.numiinfo.TRTGTD",
@@ -46,8 +46,7 @@ icaruspotbranches = [
     "rec.hdr.numiinfo.daq_gates",
 ]
 
-sbndpotbranches = [
-    "rec.hdr.bnbinfo.event",
+bnbpotbranches = [
     "rec.hdr.bnbinfo.TOR860",
     "rec.hdr.bnbinfo.TOR875",
     "rec.hdr.bnbinfo.THCURR",
@@ -200,6 +199,7 @@ slcbranches = [
     "rec.slc.opt0.time",
     "rec.slc.opt0.measPE",
     "rec.slc.opt0.hypoPE",
+    "rec.slc.barycenterFM.flashTime",    
     "rec.slc.tmatch.eff",
     "rec.slc.tmatch.pur",
     "rec.slc.tmatch.index",
