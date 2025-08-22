@@ -130,6 +130,7 @@ trkbranches = [
     trkbranch + "chi2pid.2.chi2_pion",
     trkbranch + "chi2pid.2.chi2_proton",
     trkbranch + "chi2pid.2.pida",
+    trkbranch + "calo.2.charge",
 ] + pfpbranches
 
 trkmcsbranches = [
