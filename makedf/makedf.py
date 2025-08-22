@@ -41,6 +41,17 @@ def make_mchdrdf(f):
     hdr = loadbranches(f["recTree"], mchdrbranches).rec.hdr
     return hdr
 
+def make_spilldf_bnb(f):
+    spill = loadbranches(f["recTree"],bnbspillbranches).rec.hdr.spillbnbinfo
+    return spill
+
+def make_hdrspill_df(f):
+    hdrdf = loadbranches(f["recTree"], hdrbranches).rec.hdr
+    spilldf = make_spilldf_bnb(f)
+    hdrspill_df = pd.merge(hdrdf, spilldf, on='entry',how='left')
+
+    return hdrspill_df
+
 def make_potdf_bnb(f):
     pot = loadbranches(f["recTree"], bnbpotbranches).rec.hdr.bnbinfo
     return pot
