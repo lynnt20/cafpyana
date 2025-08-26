@@ -57,7 +57,7 @@ def make_potdf_bnb(f):
     return pot
 
 def make_spilldf_sbnd(f):
-    spill = loadbranches(f["recTree"],sbndspillbranches).rec.hdr.spillbnbinfo
+    spill = loadbranches(f["recTree"],bnbspillbranches).rec.hdr.spillbnbinfo
     return spill
 
 def make_potdf_numi(f):
@@ -264,7 +264,7 @@ def make_mcprimdf(f):
     mcprimdf = loadbranches(f["recTree"], mcprimbranches)
     return mcprimdf
 
-def make_pandora_df(f, trkScoreCut=False, trkDistCut=0., cutClearCosmic=False, requireFiducial=False, **trkArgs):
+def make_pandora_df(f, trkScoreCut=False, trkDistCut=0., cutClearCosmic=True, requireFiducial=False, **trkArgs):
     # load
     trkdf = make_trkdf(f, trkScoreCut, **trkArgs)
     slcdf = make_slcdf(f)

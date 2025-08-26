@@ -10,17 +10,17 @@ mchdrbranches = [
 ]
 
 hdrbranches = [
-    # "rec.hdr.pot",
+    "rec.hdr.pot",
     # "rec.hdr.first_in_subrun",
     # "rec.hdr.ismc",
     "rec.hdr.run",
     "rec.hdr.subrun",
-    # "rec.hdr.ngenevt",
-    # "rec.hdr.evt",
+    "rec.hdr.ngenevt",
+    "rec.hdr.evt",
     # "rec.hdr.proc",
     # "rec.hdr.cluster",
     # "rec.hdr.fno",
-    # "rec.hdr.noffbeambnb",
+    "rec.hdr.noffbeambnb",
 
     # "rec.hdr.triggerinfo.trigger_id",
     # "rec.hdr.triggerinfo.gate_id",
