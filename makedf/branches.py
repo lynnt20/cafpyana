@@ -37,6 +37,11 @@ bnbspillbranches  = [
     "rec.hdr.spillbnbinfo.TOR875",
     "rec.hdr.spillbnbinfo.THCURR",
 ]
+opflashbranches = [
+    "rec.opflashes.firsttime",
+    "rec.opflashes.time",
+    "rec.opflashes.totalpe",
+]
 
 numipotbranches = [
     "rec.hdr.numiinfo.spill_time_s",
@@ -71,6 +76,19 @@ trueparticlenames = [
 ]
 
 trueparticlebranches = ["rec.true_particles.%s" % s for s in trueparticlenames]
+
+crtspbranches = [
+    "rec.crt_spacepoints.pe",
+    "rec.crt_spacepoints.position.x",
+    "rec.crt_spacepoints.position.y",
+    "rec.crt_spacepoints.position.z",
+    "rec.crt_spacepoints.position_err.x",
+    "rec.crt_spacepoints.position_err.y",
+    "rec.crt_spacepoints.position_err.z",
+    "rec.crt_spacepoints.time",
+    "rec.crt_spacepoints.time_err"
+]
+
 
 pfpbranch = "rec.slc.reco.pfp."
 trkbranch = pfpbranch + "trk."

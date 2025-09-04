@@ -30,7 +30,7 @@ TRUE_KE_THRESHOLDS = {"nmu_27MeV": ["muon", 0.027],
                       "np_20MeV": ["proton", 0.02],
                       "np_50MeV": ["proton", 0.05],
                       "npi_30MeV": ["pipm", 0.03],
-                      "nkaon_50MeV": ["kaon_p",0.05]
+                      "nn_0MeV": ["neutron", 0.0]
                       }
 
 def make_hdrdf(f):
@@ -105,6 +105,14 @@ def make_mchdf(f, include_weights=False):
         wgtdf = numisyst.numisyst(14, mcdf.E) # TODO: what PDG?
         mcdf = pd.concat([mcdf, wgtdf], axis=1)
     return mcdf
+
+def make_crtspdf(f):
+    crtspdf = loadbranches(f["recTree"], crtspbranches).rec
+    return crtspdf
+
+def make_opflashdf(f):
+    opflashdf = loadbranches(f["recTree"], opflashbranches).rec.opflashes
+    return opflashdf
 
 def make_trkdf(f, scoreCut=False, requiret0=False, requireCosmic=False, mcs=False):
     trkdf = loadbranches(f["recTree"], trkbranches + shwbranches)
@@ -256,7 +264,17 @@ def make_mcdf(f, branches=mcbranches, primbranches=mcprimbranches):
     # mcdf = multicol_merge(mcdf, cpidf, left_index=True, right_index=True, how="left", validate="one_to_one")
     # mcdf = multicol_merge(mcdf, pdf, left_index=True, right_index=True, how="left", validate="one_to_one")
 
-    #print("done with make_mcdf")
+    # primary track variables
+    mcdf.loc[:, ('mu','totp','')] = np.sqrt(mcdf.mu.genp.x**2 + mcdf.mu.genp.y**2 + mcdf.mu.genp.z**2)
+    mcdf.loc[:, ('p','totp','')] = np.sqrt(mcdf.p.genp.x**2 + mcdf.p.genp.y**2 + mcdf.p.genp.z**2)
+
+    # opening angles
+    mcdf.loc[:, ('mu','dir','x')] = mcdf.mu.genp.x/mcdf.mu.totp
+    mcdf.loc[:, ('mu','dir','y')] = mcdf.mu.genp.y/mcdf.mu.totp
+    mcdf.loc[:, ('mu','dir','z')] = mcdf.mu.genp.z/mcdf.mu.totp
+    mcdf.loc[:, ('p','dir','x')] = mcdf.p.genp.x/mcdf.p.totp
+    mcdf.loc[:, ('p','dir','y')] = mcdf.p.genp.y/mcdf.p.totp
+    mcdf.loc[:, ('p','dir','z')] = mcdf.p.genp.z/mcdf.p.totp
 
     return mcdf
 
