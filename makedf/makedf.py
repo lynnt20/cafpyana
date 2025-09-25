@@ -227,7 +227,9 @@ def make_mcdf(f, branches=mcbranches, primbranches=mcprimbranches):
     mcdf = multicol_add(mcdf, max_proton_KE.rename("max_proton_ke"), default=0.)
 
     mcdf.max_proton_ke = mcdf.max_proton_ke.fillna(0.)
-
+    
+    total_depE = (mcprimdf.startE - mcprimdf.endE).groupby(level=[0,1]).sum()
+    mcdf = multicol_add(mcdf, total_depE.rename("total_depE"), default=0.)
     # particle counts
     mcdf = multicol_add(mcdf, (np.abs(mcprimdf.pdg)==2112).groupby(level=[0,1]).sum().rename("nn"))
     mcdf = multicol_add(mcdf, (np.abs(mcprimdf.pdg)==2212).groupby(level=[0,1]).sum().rename("np"))
@@ -265,16 +267,16 @@ def make_mcdf(f, branches=mcbranches, primbranches=mcprimbranches):
     # mcdf = multicol_merge(mcdf, pdf, left_index=True, right_index=True, how="left", validate="one_to_one")
 
     # primary track variables
-    mcdf.loc[:, ('mu','totp','')] = np.sqrt(mcdf.mu.genp.x**2 + mcdf.mu.genp.y**2 + mcdf.mu.genp.z**2)
-    mcdf.loc[:, ('p','totp','')] = np.sqrt(mcdf.p.genp.x**2 + mcdf.p.genp.y**2 + mcdf.p.genp.z**2)
+    # mcdf.loc[:, ('mu','totp','')] = np.sqrt(mcdf.mu.genp.x**2 + mcdf.mu.genp.y**2 + mcdf.mu.genp.z**2)
+    # mcdf.loc[:, ('p','totp','')] = np.sqrt(mcdf.p.genp.x**2 + mcdf.p.genp.y**2 + mcdf.p.genp.z**2)
 
-    # opening angles
-    mcdf.loc[:, ('mu','dir','x')] = mcdf.mu.genp.x/mcdf.mu.totp
-    mcdf.loc[:, ('mu','dir','y')] = mcdf.mu.genp.y/mcdf.mu.totp
-    mcdf.loc[:, ('mu','dir','z')] = mcdf.mu.genp.z/mcdf.mu.totp
-    mcdf.loc[:, ('p','dir','x')] = mcdf.p.genp.x/mcdf.p.totp
-    mcdf.loc[:, ('p','dir','y')] = mcdf.p.genp.y/mcdf.p.totp
-    mcdf.loc[:, ('p','dir','z')] = mcdf.p.genp.z/mcdf.p.totp
+    # # opening angles
+    # mcdf.loc[:, ('mu','dir','x')] = mcdf.mu.genp.x/mcdf.mu.totp
+    # mcdf.loc[:, ('mu','dir','y')] = mcdf.mu.genp.y/mcdf.mu.totp
+    # mcdf.loc[:, ('mu','dir','z')] = mcdf.mu.genp.z/mcdf.mu.totp
+    # mcdf.loc[:, ('p','dir','x')] = mcdf.p.genp.x/mcdf.p.totp
+    # mcdf.loc[:, ('p','dir','y')] = mcdf.p.genp.y/mcdf.p.totp
+    # mcdf.loc[:, ('p','dir','z')] = mcdf.p.genp.z/mcdf.p.totp
 
     return mcdf
 
