@@ -21,7 +21,7 @@ hdrbranches = [
     # "rec.hdr.cluster",
     # "rec.hdr.fno",
     "rec.hdr.noffbeambnb",
-
+    "rec.hdr.nbnbinfo",
     # "rec.hdr.triggerinfo.trigger_id",
     # "rec.hdr.triggerinfo.gate_id",
     # "rec.hdr.triggerinfo.trigger_count",
@@ -95,16 +95,16 @@ trkbranch = pfpbranch + "trk."
 shwbranch = pfpbranch + "shw."
 
 pfobranches = [
-    pfpbranch + "pfochar.chgendfrac",
-    pfpbranch + "pfochar.chgfracspread",
-    pfpbranch + "pfochar.linfitdiff",
-    pfpbranch + "pfochar.linfitlen",
-    pfpbranch + "pfochar.linfitgaplen",
-    pfpbranch + "pfochar.linfitrms",
-    pfpbranch + "pfochar.openanglediff",
-    pfpbranch + "pfochar.pca2ratio",
-    pfpbranch + "pfochar.pca3ratio", 
-    pfpbranch + "pfochar.vtxdist" 
+    # pfpbranch + "pfochar.chgendfrac",
+    # pfpbranch + "pfochar.chgfracspread",
+    # pfpbranch + "pfochar.linfitdiff",
+    # pfpbranch + "pfochar.linfitlen",
+    # pfpbranch + "pfochar.linfitgaplen",
+    # pfpbranch + "pfochar.linfitrms",
+    # pfpbranch + "pfochar.openanglediff",
+    # pfpbranch + "pfochar.pca2ratio",
+    # pfpbranch + "pfochar.pca3ratio", 
+    # pfpbranch + "pfochar.vtxdist" 
 ]
 
 pfpbranches = [
