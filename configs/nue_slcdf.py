@@ -2,6 +2,8 @@ from makedf.makedf import *
 
 DFS = [
       make_pandora_df, 
+      make_trkdf,
+      make_slcdf,
        make_hdrdf, 
       make_mcnudf,
       make_potdf_bnb,
@@ -9,6 +11,8 @@ DFS = [
        ]
 NAMES = [
       "slcpfp",
+      "trk",
+      "slc",
        "hdr",
       "mcnu",
       "pot",

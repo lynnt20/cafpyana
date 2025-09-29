@@ -258,6 +258,7 @@ trkhitbranches_P1_icarus = trkhitbranches_perplane_icarus(1)
 trkhitbranches_P0_icarus = trkhitbranches_perplane_icarus(0)
 
 for n in trueparticlenames: shwbranches.append(shwbranch + "truth.p." + n)
+for n in trueparticlenames: trkbranches.append(trkbranch + "truth.p." + n)
 
 slcbranches = [
     "rec.slc.is_clear_cosmic",
@@ -265,18 +266,18 @@ slcbranches = [
     "rec.slc.self",
     "rec.slc.nuid.crlongtrkdiry",
     "rec.slc.nu_score",
-    "rec.slc.crumbs_result.score",
+    # "rec.slc.crumbs_result.score",
     "rec.slc.opt0.tpc",
     "rec.slc.opt0.score",
     "rec.slc.opt0.time",
     "rec.slc.opt0.measPE",
     "rec.slc.opt0.hypoPE",
-    "rec.slc.opt0_sec.tpc",
-    "rec.slc.opt0_sec.score",
-    "rec.slc.opt0_sec.time",
-    "rec.slc.opt0_sec.measPE",
-    "rec.slc.opt0_sec.hypoPE",
-    "rec.slc.barycenterFM.flashTime",    
+    # "rec.slc.opt0_sec.tpc",
+    # "rec.slc.opt0_sec.score",
+    # "rec.slc.opt0_sec.time",
+    # "rec.slc.opt0_sec.measPE",
+    # "rec.slc.opt0_sec.hypoPE",
+    # "rec.slc.barycenterFM.flashTime",    
     "rec.slc.tmatch.eff",
     "rec.slc.tmatch.pur",
     "rec.slc.tmatch.index",

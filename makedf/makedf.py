@@ -246,7 +246,7 @@ def make_mcprimdf(f):
     mcprimdf = loadbranches(f["recTree"], mcprimbranches)
     return mcprimdf
 
-def make_pandora_df(f, trkScoreCut=False, trkDistCut=10., cutClearCosmic=False, requireFiducial=False, **trkArgs):
+def make_pandora_df(f, trkScoreCut=False, trkDistCut=0., cutClearCosmic=False, requireFiducial=False, updatecalo=False,**trkArgs):
     # load
     trkdf = make_trkdf(f, trkScoreCut, **trkArgs)
     if updatecalo:
@@ -281,6 +281,8 @@ def make_pandora_df(f, trkScoreCut=False, trkDistCut=10., cutClearCosmic=False, 
     slcdf = multicol_merge(slcdf, trkdf, left_index=True, right_index=True, how="right", validate="one_to_many")
 
     # distance from vertex to track start
+    slcdf = multicol_add(slcdf, dmagdf(slcdf.slc.vertex, slcdf.pfp.trk.start).rename(("pfp", "dist_to_vertex")))
+
     if trkDistCut > 0:
         slcdf = slcdf[slcdf.pfp.dist_to_vertex < trkDistCut]
     if cutClearCosmic:
