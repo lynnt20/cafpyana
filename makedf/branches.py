@@ -56,6 +56,13 @@ numipotbranches = [
 bnbpotbranches = [
     "rec.hdr.bnbinfo.TOR860",
     "rec.hdr.bnbinfo.TOR875",
+    "rec.hdr.bnbinfo.FOM",
+]
+
+bnbpotspillbranches = [
+    "rec.hdr.spillbnbinfo.TOR860",
+    "rec.hdr.spillbnbinfo.TOR875",
+    "rec.hdr.spillbnbinfo.FOM",
 ]
 
 sbndframebranches = [
@@ -77,6 +84,12 @@ sbndtimingbranches = [
     "rec.sbnd_timings.tdcCrtt1",
     "rec.sbnd_timings.tdcEtrig",
     "rec.sbnd_timings.tdcRwm",
+]
+
+sbndsofttrigbranches = [
+    "rec.soft_trig.npmts",
+    "rec.soft_trig.flash_peakpe",
+    "rec.soft_trig.flash_peaktime",
 ]
 
 trueparticlenames = [
@@ -183,12 +196,15 @@ trkmcsbranches = [
 
 shwbranches = [
     shwbranch + "start.x", shwbranch + "start.y", shwbranch + "start.z",
-    shwbranch + "end.x",   shwbranch + "end.y", shwbranch + "end.z",
+    shwbranch + "end.x",   shwbranch + "end.y",   shwbranch + "end.z",
+    shwbranch + "dir.x",   shwbranch + "dir.y",   shwbranch + "dir.z",
     shwbranch + 'conversion_gap', 
     shwbranch + "density",
     shwbranch + "open_angle",
-    shwbranch + 'bestplane',
-    shwbranch + 'bestplane_dEdx', shwbranch + 'bestplane_energy',
+    shwbranch + 'bestplane_dEdx', 
+    shwbranch + 'bestplane_energy',
+    shwbranch + 'bestplane_for_dedx',
+    shwbranch + 'bestplane_for_energy',
     shwbranch + 'plane.0.dEdx',   shwbranch + 'plane.1.dEdx', shwbranch + 'plane.2.dEdx',
     shwbranch + 'plane.0.energy', shwbranch + 'plane.1.energy', shwbranch + 'plane.2.energy',
     shwbranch + 'plane.0.nHits',  shwbranch + 'plane.1.nHits',  shwbranch + 'plane.2.nHits',

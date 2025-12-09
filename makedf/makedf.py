@@ -186,12 +186,13 @@ def make_trkdf(f, scoreCut=False, requiret0=False, requireCosmic=False, mcs=Fals
 
     return trkdf
 
-def make_pfpdf(f, update_shw=True):
+def make_pfpdf(f, update_shw=False):
     pfpdf = loadbranches(f["recTree"], trkbranches + shwbranches)
     pfpdf = pfpdf.rec.slc.reco
     
     if update_shw:
-        ## necessary since "bestplane" stored in the cafs currently is from the dEdx alg
+        ## This block is only needed for flatcafs produced with sbncode earlier than v10_14_00.
+        ## "bestplane" stored in those cafs currently is from the dEdx alg ONLY
         ## bestplane for dEdx alg is not necessarily the same as bestplane for shower energy
 
         # set shower energy as the one with the plane that has the most number of hits (maxplane)

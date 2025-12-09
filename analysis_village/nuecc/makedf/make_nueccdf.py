@@ -2,6 +2,10 @@ from makedf.makedf import *
 from pyanalib.pandas_helpers import *
 from makedf.util import *
 
+def make_softtrigdf(f):
+    soft = loadbranches(f["recTree"], sbndsofttrigbranches).rec.soft_trig
+    return soft
+
 def make_mcnudf_nuecc(f,**args):
     mcdf = make_mcnudf(f,**args)
     # drop mcdf columns not relevant for this analysis
@@ -48,12 +52,13 @@ def make_nueccdf_data(f):
 
 def make_nueccdf(f):
     det = loadbranches(f["recTree"], ["rec.hdr.det"]).rec.hdr.det
-    if (1 == det.unique()):
-        DETECTOR = "SBND"
-    else:
-        DETECTOR = "ICARUS"
+    # if (1 == det.unique()):
+    #     DETECTOR = "SBND"
+    # else:
+    #     DETECTOR = "ICARUS"
 
-    assert DETECTOR == "SBND"
+    # assert DETECTOR == "SBND"
+    DETECTOR = "SBND"
     
     pfpdf = make_pfpdf(f)
     slcdf = loadbranches(f["recTree"], slcbranches)
@@ -61,7 +66,7 @@ def make_nueccdf(f):
     
     pfpdf = pfpdf.drop('pfochar',axis=1,level=1)
     ## primary shw candidate is shw pfp with highest energy, valid energy, and score < 0.5
-    shwdf = pfpdf[(pfpdf.pfp.trackScore < 0.5) & (pfpdf.pfp.shw.maxplane_energy > 0)].sort_values(pfpdf.pfp.index.names[:-1] + [('pfp','shw','maxplane_energy','','','')]).groupby(level=[0,1]).nth(-1)
+    shwdf = pfpdf[(pfpdf.pfp.trackScore < 0.5) & (pfpdf.pfp.shw.bestplane_energy > 0)].sort_values(pfpdf.pfp.index.names[:-1] + [('pfp','shw','maxplane_energy','','','')]).groupby(level=[0,1]).nth(-1)
     # drop all columns that are from trk attributes
     shwdf = shwdf.drop('trk',axis=1,level=1)
     shwdf.columns = shwdf.columns.set_levels(['primshw'],level=0)
@@ -75,7 +80,7 @@ def make_nueccdf(f):
     slcdf = multicol_merge(slcdf, trkdf.droplevel(-1),left_index=True,right_index=True,how="left",validate="one_to_one")
 
     ## secondary shower is shw pfp with second highest energy, valid energy, and score < 0.5 
-    shwsecdf = pfpdf[(pfpdf.pfp.trackScore < 0.5) & (pfpdf.pfp.shw.maxplane_energy > 0)].sort_values(pfpdf.pfp.index.names[:-1] + [('pfp','shw','maxplane_energy','','','')]).groupby(level=[0,1]).nth(-2)
+    shwsecdf = pfpdf[(pfpdf.pfp.trackScore < 0.5) & (pfpdf.pfp.shw.bestplane_energy > 0)].sort_values(pfpdf.pfp.index.names[:-1] + [('pfp','shw','maxplane_energy','','','')]).groupby(level=[0,1]).nth(-2)
     shwsecdf = shwsecdf.drop('trk',axis=1,level=1)
     shwsecdf.columns = shwsecdf.columns.set_levels(['secshw'],level=0)
     slcdf = multicol_merge(slcdf, shwsecdf.droplevel(-1),left_index=True,right_index=True,how="left",validate="one_to_one")
@@ -87,37 +92,30 @@ def make_nueccdf(f):
     
     # recalc dEdx for the primary shower
     # do after pre-selection to speed up
-    for plane in range(3):
-        trkhitdf = make_trkhitdf(f,plane)
-        slchitdf = multicol_merge(slcdf.reset_index(), 
-                                   trkhitdf.reset_index(),
-                                   left_on=[('entry', '', '', '', '', ''), 
-                                           ('rec.slc..index', '', '', '', '', ''),
-                                           ('primshw','tindex', '', '', '', '')], 
-                                   right_on=[('entry', '', '', '', '', ''), 
-                                           ('rec.slc..index', '', '', '', '', ''),
-                                           ('rec.slc.reco.pfp..index', '', '', '', '', ''),],
-                                   how="left")
-        slchitdf = slchitdf.set_index(trkhitdf.index.names,verify_integrity=True)
-        slchitdf = multicol_add(slchitdf,dmagdf(slchitdf.primshw.shw.start,slchitdf).rename("sp_to_start"))
+    # for plane in range(3):
+    #     trkhitdf = make_trkhitdf(f,plane)
+    #     slchitdf = multicol_merge(slcdf.reset_index(), 
+    #                                trkhitdf.reset_index(),
+    #                                left_on=[('entry', '', '', '', '', ''), 
+    #                                        ('rec.slc..index', '', '', '', '', ''),
+    #                                        ('primshw','tindex', '', '', '', '')], 
+    #                                right_on=[('entry', '', '', '', '', ''), 
+    #                                        ('rec.slc..index', '', '', '', '', ''),
+    #                                        ('rec.slc.reco.pfp..index', '', '', '', '', ''),],
+    #                                how="left")
+    #     slchitdf = slchitdf.set_index(trkhitdf.index.names,verify_integrity=True)
+    #     slchitdf = multicol_add(slchitdf,dmagdf(slchitdf.primshw.shw.start,slchitdf).rename("sp_to_start"))
         
-        # require that the spacepoints are between 0.5 cm and 5 cm of the shower start
-        # require that the spacepoints are within the AV
-        slchitdf = slchitdf[(slchitdf.sp_to_start < 5) & (slchitdf.sp_to_start > 0.5)]
-        slchitdf = slchitdf[InAV(slchitdf)]
+    #     # require that the spacepoints are between 0.5 cm and 5 cm of the shower start
+    #     # require that the spacepoints are within the AV
+    #     slchitdf = slchitdf[(slchitdf.sp_to_start < 5) & (slchitdf.sp_to_start > 0.5)]
+    #     slchitdf = slchitdf[InAV(slchitdf)]
 
-        slchitdf['dedx_reco'] = chi2pid.dedx(slchitdf,gain="SBND",calibrate="SBND",plane=plane)
-        this_dedx_col = ('primshw','shw','plane',f'I{plane}','dEdx_new')
-        this_hits_col = ('primshw','shw','plane',f'I{plane}','nHits_dEdx')
+    #     slchitdf['dedx_reco'] = chi2pid.dedx(slchitdf,gain="SBND",calibrate="SBND",plane=plane)
+    #     this_dedx_col = ('primshw','shw','plane',f'I{plane}','dEdx_new')
+    #     this_hits_col = ('primshw','shw','plane',f'I{plane}','nHits_dEdx')
 
-        slcdf = multicol_add(slcdf,slchitdf[('dedx_reco', '', '', '', '', '')].groupby(slchitdf.index.names[:-2]).median().rename(this_dedx_col), default=-999)
-        slcdf = multicol_add(slcdf,slchitdf[('dedx_reco', '', '', '', '', '')].groupby(slchitdf.index.names[:-2]).count().rename(this_hits_col),default=-999)
-    
-    slcdf['primshw','shw','maxplane_dEdx_new','','',''] = np.nan
-    slcdf['primshw','shw','maxplane_idx','','',''] = slcdf.loc(axis=1)['primshw','shw','plane',:,"nHits_dEdx"].idxmax(axis=1).apply(lambda x: x[3])
-
-    conditions = [slcdf['primshw','shw','maxplane_idx','','','']=="I2",slcdf['primshw','shw','maxplane_idx','','','']=="I1",slcdf['primshw','shw','maxplane_idx','','','']=="I0"]
-    choices = [slcdf['primshw','shw','plane','I2','dEdx_new',''],slcdf['primshw','shw','plane','I1','dEdx_new',''],slcdf['primshw','shw','plane','I0','dEdx_new','']]
-    slcdf['primshw','shw','maxplane_dEdx_new','','',''] = np.select(conditions,choices,default=np.nan)
+    #     slcdf = multicol_add(slcdf,slchitdf[('dedx_reco', '', '', '', '', '')].groupby(slchitdf.index.names[:-2]).median().rename(this_dedx_col), default=-999)
+    #     slcdf = multicol_add(slcdf,slchitdf[('dedx_reco', '', '', '', '', '')].groupby(slchitdf.index.names[:-2]).count().rename(this_hits_col),default=-999)
     
     return slcdf 
