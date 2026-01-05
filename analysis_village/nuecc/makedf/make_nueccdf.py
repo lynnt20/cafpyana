@@ -66,7 +66,7 @@ def make_nueccdf(f):
     
     pfpdf = pfpdf.drop('pfochar',axis=1,level=1)
     ## primary shw candidate is shw pfp with highest energy, valid energy, and score < 0.5
-    shwdf = pfpdf[(pfpdf.pfp.trackScore < 0.5) & (pfpdf.pfp.shw.bestplane_energy > 0)].sort_values(pfpdf.pfp.index.names[:-1] + [('pfp','shw','maxplane_energy','','','')]).groupby(level=[0,1]).nth(-1)
+    shwdf = pfpdf[(pfpdf.pfp.trackScore < 0.5) & (pfpdf.pfp.shw.bestplane_energy > 0)].sort_values(pfpdf.pfp.index.names[:-1] + [('pfp','shw','bestplane_energy','','','')]).groupby(level=[0,1]).nth(-1)
     # drop all columns that are from trk attributes
     shwdf = shwdf.drop('trk',axis=1,level=1)
     shwdf.columns = shwdf.columns.set_levels(['primshw'],level=0)
@@ -80,7 +80,7 @@ def make_nueccdf(f):
     slcdf = multicol_merge(slcdf, trkdf.droplevel(-1),left_index=True,right_index=True,how="left",validate="one_to_one")
 
     ## secondary shower is shw pfp with second highest energy, valid energy, and score < 0.5 
-    shwsecdf = pfpdf[(pfpdf.pfp.trackScore < 0.5) & (pfpdf.pfp.shw.bestplane_energy > 0)].sort_values(pfpdf.pfp.index.names[:-1] + [('pfp','shw','maxplane_energy','','','')]).groupby(level=[0,1]).nth(-2)
+    shwsecdf = pfpdf[(pfpdf.pfp.trackScore < 0.5) & (pfpdf.pfp.shw.bestplane_energy > 0)].sort_values(pfpdf.pfp.index.names[:-1] + [('pfp','shw','bestplane_energy','','','')]).groupby(level=[0,1]).nth(-2)
     shwsecdf = shwsecdf.drop('trk',axis=1,level=1)
     shwsecdf.columns = shwsecdf.columns.set_levels(['secshw'],level=0)
     slcdf = multicol_merge(slcdf, shwsecdf.droplevel(-1),left_index=True,right_index=True,how="left",validate="one_to_one")
