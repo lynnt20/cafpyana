@@ -26,7 +26,7 @@ def make_nueccdf_mc(f, include_weights=False,multisim_nuniv=100,slim=False):
     df = multicol_merge(slcdf.reset_index(), 
                         mcdf.reset_index(),
                         left_on=[('entry', '', '', '', '', ''), 
-                                ('slc', 'tmatch', 'idx', '', '', '')], 
+                                 ('slc', 'tmatch', 'idx', '', '', '')], 
                         right_on=[('entry', '', '', '', '', ''), 
                                 ('rec.mc.nu..index', '', '')], 
                         how="left")
