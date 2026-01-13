@@ -29,6 +29,27 @@ def make_nueccdf_mc(f, include_weights=False,multisim_nuniv=100,slim=True):
     df = df.set_index(slcdf.index.names, verify_integrity=True)
     return df
 
+def make_nueccdf_mc_withcuts(f):
+    slcdf = make_nueccdf(f)
+    slcdf = slcdf[np.isnan(slcdf.primtrk.trk.len) | (slcdf.primtrk.trk.len < 200)]
+    slcdf = slcdf.drop('primtrk',axis=1,level=0)
+    slcdf = slcdf[slcdf.primshw.shw.conversion_gap < 2]
+    slcdf = slcdf[(slcdf.primshw.shw.bestplane_dEdx > 1) & (slcdf.primshw.shw.bestplane_dEdx < 2.5)]
+    slcdf = slcdf[slcdf.primshw.shw.open_angle < 0.2] 
+    
+    mcdf = make_mcnudf_nuecc(f,include_weights=False)
+    mcdf.columns = pd.MultiIndex.from_tuples([tuple(["slc", "truth"] + list(c)) for c in mcdf.columns])
+    df = multicol_merge(slcdf.reset_index(), 
+                        mcdf.reset_index(),
+                        left_on=[('entry', '', '', '', '', ''), 
+                                ('slc', 'tmatch', 'idx', '', '', '')], 
+                        right_on=[('entry', '', '', '', '', ''), 
+                                ('rec.mc.nu..index', '', '')], 
+                        how="left")
+    df = df.set_index(slcdf.index.names, verify_integrity=True)
+    return df
+
+
 def make_nueccdf_data(f):
     slcdf = make_nueccdf(f)
     # drop truth cols for data
@@ -56,7 +77,7 @@ def make_nueccdf(f):
     assert DETECTOR == "SBND"
     
     pfpdf = make_pfpdf(f)
-    slcdf = loadbranches(f["recTree"], slcbranches)
+    slcdf = loadbranches(f["recTree"], slcbranches+barycenterFMbranches)
     slcdf = slcdf.rec
     
     pfpdf = pfpdf.drop('pfochar',axis=1,level=1)
