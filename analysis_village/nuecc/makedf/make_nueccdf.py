@@ -52,12 +52,13 @@ def make_nueccdf_data(f):
 
 def make_nueccdf(f):
     det = loadbranches(f["recTree"], ["rec.hdr.det"]).rec.hdr.det
-    if (1 == det.unique()):
-        DETECTOR = "SBND"
-    else:
-        DETECTOR = "ICARUS"
+    # if (1 == det.unique()):
+    #     DETECTOR = "SBND"
+    # else:
+    #     DETECTOR = "ICARUS"
 
-    assert DETECTOR == "SBND"
+    # assert DETECTOR == "SBND"
+    DETECTOR = "SBND"
     
     pfpdf = make_pfpdf(f)
     slcdf = loadbranches(f["recTree"], slcbranches + barycenterFMbranches)
