@@ -192,6 +192,7 @@ trkmcsbranches = [
 shwbranches = [
     shwbranch + "start.x", shwbranch + "start.y", shwbranch + "start.z",
     shwbranch + "end.x",   shwbranch + "end.y", shwbranch + "end.z",
+    shwbranch + "dir.x",   shwbranch + "dir.y", shwbranch + "dir.z",
     shwbranch + 'conversion_gap', 
     shwbranch + "density",
     shwbranch + "open_angle",
