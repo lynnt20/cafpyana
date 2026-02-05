@@ -2,6 +2,13 @@ from makedf.makedf import *
 from pyanalib.pandas_helpers import *
 from makedf.util import *
 
+def make_mcnulite_df_nuecc(f):
+    rse_df = make_hdrdf(f)
+    nu_df = loadbranches(f["recTree"], ["rec.mc.nu.E","rec.mc.nu.pdg"]).rec.mc.nu
+    names = nu_df.index.names
+    df = nu_df.reset_index().merge(rse_df.reset_index(),on='entry').set_index(names)
+    return df 
+
 def make_mcnudf_nuecc(f,**args):
     mcdf = make_mcnudf(f,**args)
     # drop mcdf columns not relevant for this analysis
