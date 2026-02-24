@@ -25,6 +25,11 @@ hdrbranches = [
     "rec.hdr.noffbeambnb",
 ]
 
+sbndtriggerbranches = [
+    "rec.hdr.triggerinfo.passed_trigger",
+    "rec.hdr.triggerinfo.num_pairs_over_threshold",
+]
+
 trigger_info_branches = [
     "rec.hdr.triggerinfo.trigger_id",
     "rec.hdr.triggerinfo.gate_id",
@@ -41,8 +46,11 @@ trigger_info_branches = [
 
 opflashbranches = [
     "rec.opflashes.firsttime",
+    "rec.opflashes.firstpmt",
     "rec.opflashes.time",
     "rec.opflashes.totalpe",
+    "rec.opflashes.center.x", "rec.opflashes.center.y", "rec.opflashes.center.z",
+    "rec.opflashes.width.x", "rec.opflashes.width.y", "rec.opflashes.width.z",
 ]
 
 numipotbranches = [
@@ -57,12 +65,14 @@ bnbpotbranches = [
     "rec.hdr.bnbinfo.TOR860",
     "rec.hdr.bnbinfo.TOR875",
     "rec.hdr.bnbinfo.FOM",
+    "rec.hdr.bnbinfo.THCURR",
 ]
 
 bnbpotspillbranches = [
     "rec.hdr.spillbnbinfo.TOR860",
     "rec.hdr.spillbnbinfo.TOR875",
     "rec.hdr.spillbnbinfo.FOM",
+    "rec.hdr.spillbnbinfo.THCURR",
 ]
 
 sbndframebranches = [
