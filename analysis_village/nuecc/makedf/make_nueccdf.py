@@ -17,12 +17,71 @@ def make_mcnudf_nuecc(f,**args):
     if 'cpi' in list(zip(*list(mcdf.columns)))[0]:  mcdf = mcdf.drop('cpi',axis=1,level=0)
     return mcdf
 
-def make_mcnudf_nuecc_wgt(f):
-    mcdf = make_mcnudf_nuecc(f,include_weights=True,wgt_types=['genie'])
+
+def make_sigmcnudf_wgt(f):
+    mcdf = make_mcdf(f)
+    mcdf["ind"] = mcdf.index.get_level_values(1)
+    
+    if 'mu'  in list(zip(*list(mcdf.columns)))[0]:  mcdf = mcdf.drop('mu', axis=1,level=0)
+    if 'p'   in list(zip(*list(mcdf.columns)))[0]:  mcdf = mcdf.drop('p',  axis=1,level=0)
+    if 'cpi' in list(zip(*list(mcdf.columns)))[0]:  mcdf = mcdf.drop('cpi',axis=1,level=0)
+    
+    ## select out signal events 
+    mcdf = mcdf[InAV(df=mcdf.position)] # in AV
+    mcdf = mcdf[(mcdf.iscc==1) & 
+                (abs(mcdf.pdg)==12) & 
+                (abs(mcdf.e.pdg)==11) & 
+                (mcdf.e.genE > 0.5)] # nueCC signal definition
+    
+    geniewgtdf = geniesyst.geniesyst(f, 
+                                     mcdf.ind, 
+                                     multisim_nuniv=100, 
+                                     slim=False, 
+                                     systematics=None)
+    mcdf = multicol_concat(mcdf, geniewgtdf)
     return mcdf
 
 def make_nueccdf_mc_wgt(f):
     df = make_nueccdf_mc(f,include_weights=True)
+    return df
+
+def make_nueccdf_mc_wgt_postsel(f, multisim_nuniv=100, slim=False, wgt_types=["bnb", "genie"], **kwargs):
+    """
+    Generates weights only for neutrino interactions that pass preselection.
+    """
+    # First, build the mc df WITHOUT weights
+    df = make_nueccdf_mc(f, include_weights=False)
+    
+    # Get only the unique truth-matched neutrino indices that survived preselection
+    nu_indices = df[('slc', 'truth', 'ind', '', '', '')].dropna().astype(int)
+    nu_indices = nu_indices[~nu_indices.index.duplicated()]  # deduplicate
+    
+    wgt_dfs = []
+    
+    if "genie" in wgt_types:
+        geniewgtdf = geniesyst.geniesyst(f, 
+                                         nu_indices, 
+                                         multisim_nuniv=multisim_nuniv, 
+                                         slim=slim, 
+                                         systematics=None)
+        wgt_dfs.append(geniewgtdf)
+    
+    if "bnb" in wgt_types:
+        bnbwgtdf = bnbsyst.bnbsyst(f, 
+                                    nu_indices, 
+                                    multisim_nuniv=multisim_nuniv, 
+                                    slim=slim)
+        wgt_dfs.append(bnbwgtdf)
+    
+    if wgt_dfs:
+        wgtdf = pd.concat(wgt_dfs, axis=1)
+        del wgt_dfs  # free intermediate list
+        wgtdf.columns = pd.MultiIndex.from_tuples(
+            [tuple(["slc", "truth"] + list(c)) for c in wgtdf.columns]
+        )
+        df = multicol_concat(df, wgtdf)
+        del wgtdf
+    
     return df
 
 def make_nueccdf_mc(f, include_weights=False,multisim_nuniv=100,slim=False,**kwargs):
@@ -114,7 +173,7 @@ def make_nueccdf(f):
     
     # pre-selection cuts
     slcdf = slcdf[slcdf.slc.is_clear_cosmic==0]
-    # slcdf = slcdf[slcdf.slc.nu_score > 0.5]
-    slcdf = slcdf[InFV(df=slcdf.slc.vertex, inzback=0, det=DETECTOR)]    
+    slcdf = slcdf[slcdf.slc.nu_score > 0.4]
+    slcdf = slcdf[InAV(df=slcdf.slc.vertex, det=DETECTOR)]    
     
-    return slcdf 
+    return slcdf
