@@ -17,14 +17,18 @@ def make_mcnudf_nuecc(f,**args):
     if 'cpi' in list(zip(*list(mcdf.columns)))[0]:  mcdf = mcdf.drop('cpi',axis=1,level=0)
     return mcdf
 
+def make_mcnudf_nuecc_wgt(f):
+    mcdf = make_mcnudf_nuecc(f,include_weights=True,wgt_types=['genie'])
+    return mcdf
+
 def make_nueccdf_mc_wgt(f):
     df = make_nueccdf_mc(f,include_weights=True)
     return df
 
-def make_nueccdf_mc(f, include_weights=False,multisim_nuniv=100,slim=False):
+def make_nueccdf_mc(f, include_weights=False,multisim_nuniv=100,slim=False,**kwargs):
     
     slcdf = make_nueccdf(f)
-    mcdf = make_mcnudf_nuecc(f,include_weights=include_weights,multisim_nuniv=multisim_nuniv,slim=slim)
+    mcdf = make_mcnudf_nuecc(f,include_weights=include_weights,multisim_nuniv=multisim_nuniv,slim=slim,**kwargs)
     mcdf.columns = pd.MultiIndex.from_tuples([tuple(["slc", "truth"] + list(c)) for c in mcdf.columns])
     df = multicol_merge(slcdf.reset_index(), 
                         mcdf.reset_index(),
@@ -110,7 +114,7 @@ def make_nueccdf(f):
     
     # pre-selection cuts
     slcdf = slcdf[slcdf.slc.is_clear_cosmic==0]
-    slcdf = slcdf[slcdf.slc.nu_score > 0.5]
+    # slcdf = slcdf[slcdf.slc.nu_score > 0.5]
     slcdf = slcdf[InFV(df=slcdf.slc.vertex, inzback=0, det=DETECTOR)]    
     
     return slcdf 
