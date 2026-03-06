@@ -128,6 +128,9 @@ def make_geniedf(f):
         "GenieEvtRec.StdHepPdg",
         "GenieEvtRec.StdHepStatus",
         "GenieEvtRec.StdHepFm",
+        "GenieEvtRec.StdHepLm",
+        "GenieEvtRec.StdHepFd",
+        "GenieEvtRec.StdHepLd",
     ]
     # shape = 1 (per event)
     genie_event_branches = [
@@ -142,6 +145,10 @@ def make_geniedf(f):
     m_df = loadbranches(f["GenieEvtRecTree"],["GenieEvtRec.StdHepP4",])
     m_df = m_df.unstack().rename(columns={0: 'px', 1 :'py', 2 :'pz', 3:'E'}, level=2)
     p_df = multicol_merge(p_df,m_df,left_index=True,right_index=True)
+
+    x_df = loadbranches(f["GenieEvtRecTree"], ["GenieEvtRec.StdHepX4"])
+    x_df = x_df.unstack().rename(columns={0: 'x', 1 :'y', 2 :'z', 3:'t'}, level=2)
+    p_df = multicol_merge(p_df,x_df,left_index=True,right_index=True)
 
     e_df = loadbranches(f["GenieEvtRecTree"],genie_event_branches)
     p_df = multicol_merge(e_df,p_df,left_index=True,right_index=True) 

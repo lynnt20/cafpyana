@@ -9,6 +9,7 @@ mchdrbranches = [
     "rec.hdr.proc",
     "rec.hdr.cluster",
     "rec.hdr.fno",
+    'rec.hdr.sourceNameHash',
 ]
 
 hdrbranches = [
@@ -23,6 +24,7 @@ hdrbranches = [
     "rec.hdr.cluster",
     "rec.hdr.fno",
     "rec.hdr.noffbeambnb",
+    'rec.hdr.sourceNameHash',
 ]
 
 trigger_info_branches = [
