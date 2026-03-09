@@ -22,6 +22,7 @@ hdrbranches = [
     "rec.hdr.proc",
     "rec.hdr.cluster",
     "rec.hdr.fno",
+    "rec.hdr.nbnbinfo",
     "rec.hdr.noffbeambnb",
 ]
 
@@ -301,9 +302,6 @@ mcbranches = [
     "rec.mc.nu.inelasticityY",
     "rec.mc.nu.Q2",
     "rec.mc.nu.w",
-    "rec.mc.nu.momentum.x",
-    "rec.mc.nu.momentum.y",
-    "rec.mc.nu.momentum.z",
     "rec.mc.nu.position.x",
     "rec.mc.nu.position.y",
     "rec.mc.nu.position.z",
@@ -324,6 +322,7 @@ mcprimbranches = [
     "rec.mc.nu.prim.genp.z",
     "rec.mc.nu.prim.start.x", "rec.mc.nu.prim.start.y", "rec.mc.nu.prim.start.z",
     "rec.mc.nu.prim.end.x", "rec.mc.nu.prim.end.y", "rec.mc.nu.prim.end.z",
+    'rec.mc.nu.prim.dir.z',
     "rec.mc.nu.prim.interaction_id", "rec.mc.nu.prim.crosses_tpc", "rec.mc.nu.prim.contained",
 ]
 
