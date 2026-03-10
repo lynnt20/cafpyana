@@ -2,6 +2,10 @@ from makedf.makedf import *
 from pyanalib.pandas_helpers import *
 from makedf.util import *
 
+# ============================================================================
+# Independent base functions
+# ============================================================================
+
 def make_mcnulite_df_nuecc(f):
     rse_df = make_hdrdf(f)
     nu_df = loadbranches(f["recTree"], ["rec.mc.nu.E","rec.mc.nu.pdg"]).rec.mc.nu
@@ -17,7 +21,6 @@ def make_mcnudf_nuecc(f,**args):
     if 'cpi' in list(zip(*list(mcdf.columns)))[0]:  mcdf = mcdf.drop('cpi',axis=1,level=0)
     return mcdf
 
-
 def make_sigmcnudf_wgt(f):
     mcdf = make_mcdf(f)
     mcdf["ind"] = mcdf.index.get_level_values(1)
@@ -27,8 +30,8 @@ def make_sigmcnudf_wgt(f):
     if 'cpi' in list(zip(*list(mcdf.columns)))[0]:  mcdf = mcdf.drop('cpi',axis=1,level=0)
     
     ## select out signal events 
-    mcdf = mcdf[InAV(df=mcdf.position)] # in AV
-    mcdf = mcdf[(mcdf.iscc==1) & 
+    mcdf = mcdf[(InFV(df=mcdf.position, inzback=0, det="SBND_nohighyz")) &
+                (mcdf.iscc==1) & 
                 (abs(mcdf.pdg)==12) & 
                 (abs(mcdf.e.pdg)==11) & 
                 (mcdf.e.genE > 0.5)] # nueCC signal definition
@@ -41,101 +44,9 @@ def make_sigmcnudf_wgt(f):
     mcdf = multicol_concat(mcdf, geniewgtdf)
     return mcdf
 
-def make_nueccdf_mc_wgt(f):
-    df = make_nueccdf_mc(f,include_weights=True)
-    return df
-
-def make_nueccdf_mc_wgt_postsel(f, multisim_nuniv=100, slim=False, wgt_types=["bnb", "genie"], **kwargs):
-    """
-    Generates weights only for neutrino interactions that pass preselection.
-    """
-    # First, build the mc df WITHOUT weights
-    df = make_nueccdf_mc(f, include_weights=False)
-    
-    # Get only the unique truth-matched neutrino indices that survived preselection
-    nu_indices = df[('slc', 'truth', 'ind', '', '', '')].dropna().astype(int)
-    nu_indices = nu_indices[~nu_indices.index.duplicated()]  # deduplicate
-    
-    wgt_dfs = []
-    
-    if "genie" in wgt_types:
-        geniewgtdf = geniesyst.geniesyst(f, 
-                                         nu_indices, 
-                                         multisim_nuniv=multisim_nuniv, 
-                                         slim=slim, 
-                                         systematics=None)
-        wgt_dfs.append(geniewgtdf)
-    
-    if "bnb" in wgt_types:
-        bnbwgtdf = bnbsyst.bnbsyst(f, 
-                                    nu_indices, 
-                                    multisim_nuniv=multisim_nuniv, 
-                                    slim=slim)
-        wgt_dfs.append(bnbwgtdf)
-    
-    if wgt_dfs:
-        wgtdf = pd.concat(wgt_dfs, axis=1)
-        del wgt_dfs  # free intermediate list
-        wgtdf.columns = pd.MultiIndex.from_tuples(
-            [tuple(["slc", "truth"] + list(c)) for c in wgtdf.columns]
-        )
-        df = multicol_concat(df, wgtdf)
-        del wgtdf
-    
-    return df
-
-def make_nueccdf_mc(f, include_weights=False,multisim_nuniv=100,slim=False,**kwargs):
-    
-    slcdf = make_nueccdf(f)
-    mcdf = make_mcnudf_nuecc(f,include_weights=include_weights,multisim_nuniv=multisim_nuniv,slim=slim,**kwargs)
-    mcdf.columns = pd.MultiIndex.from_tuples([tuple(["slc", "truth"] + list(c)) for c in mcdf.columns])
-    df = multicol_merge(slcdf.reset_index(), 
-                        mcdf.reset_index(),
-                        left_on=[('entry', '', '', '', '', ''), 
-                                ('slc', 'tmatch', 'idx', '', '', '')], 
-                        right_on=[('entry', '', '', '', '', ''), 
-                                ('rec.mc.nu..index', '', '')], 
-                        how="left")
-    df = df.set_index(slcdf.index.names, verify_integrity=True)
-    return df
-
-def make_nueccdf_mc_withcuts(f):
-    slcdf = make_nueccdf(f)
-    slcdf = slcdf[np.isnan(slcdf.primtrk.trk.len) | (slcdf.primtrk.trk.len < 200)]
-    slcdf = slcdf.drop('primtrk',axis=1,level=0)
-    slcdf = slcdf[slcdf.primshw.shw.conversion_gap < 2]
-    slcdf = slcdf[(slcdf.primshw.shw.bestplane_dEdx > 1) & (slcdf.primshw.shw.bestplane_dEdx < 2.5)]
-    slcdf = slcdf[slcdf.primshw.shw.open_angle < 0.2] 
-    
-    mcdf = make_mcnudf_nuecc(f,include_weights=False)
-    mcdf.columns = pd.MultiIndex.from_tuples([tuple(["slc", "truth"] + list(c)) for c in mcdf.columns])
-    df = multicol_merge(slcdf.reset_index(), 
-                        mcdf.reset_index(),
-                        left_on=[('entry', '', '', '', '', ''), 
-                                ('slc', 'tmatch', 'idx', '', '', '')], 
-                        right_on=[('entry', '', '', '', '', ''), 
-                                ('rec.mc.nu..index', '', '')], 
-                        how="left")
-    df = df.set_index(slcdf.index.names, verify_integrity=True)
-    return df
-
-
-def make_nueccdf_data(f):
-    slcdf = make_nueccdf(f)
-    # drop truth cols for data
-    slcdf = slcdf.drop('tmatch', axis=1,level=1) # slc level
-    slcdf = slcdf.drop('truth',  axis=1,level=2) # pfp level
-    
-    ## keep the only relevant column (for now)
-    framedf = make_framedf(f)[['frameApplyAtCaf']]
-    
-    df = multicol_merge(slcdf.reset_index(), 
-                        framedf.reset_index(),
-                        left_on=[('entry', '', '', '', '', '')],
-                        right_on=[('entry', '', '', '', '', '')], 
-                        how="left")
-    df = df.set_index(slcdf.index.names, verify_integrity=True)
-    return df
+# ============================================================================
+# Base selection functions (call hierarchy)
+# ============================================================================
 
 def make_nueccdf(f):
     det = loadbranches(f["recTree"], ["rec.hdr.det"]).rec.hdr.det
@@ -174,6 +85,232 @@ def make_nueccdf(f):
     # pre-selection cuts
     slcdf = slcdf[slcdf.slc.is_clear_cosmic==0]
     slcdf = slcdf[slcdf.slc.nu_score > 0.4]
-    slcdf = slcdf[InAV(df=slcdf.slc.vertex, det=DETECTOR)]    
+    slcdf = slcdf[InFV(df=slcdf.slc.vertex, det="SBND_nohighyz", inzback=0)]    
     
     return slcdf
+
+def make_nueccdf_withcuts(f):
+
+    score_cut=0.02
+    shower_scale=1.25
+    min_shower_energy=0.5
+    
+    max_track_length=200
+    min_conversion_gap=0.001
+    max_conversion_gap=2
+    min_dedx=1.25
+    max_dedx=2.5
+    
+    df = make_nueccdf(f)
+    df = df[df.slc.barycenterFM.score > score_cut]
+
+    df = multicol_add(df,(df.primshw.shw.maxplane_energy*shower_scale).rename(("primshw","shw","reco_energy")))
+    df = df[df.primshw.shw.reco_energy > min_shower_energy]
+    
+    df = df[np.isnan(df.primtrk.trk.len) | (df.primtrk.trk.len < max_track_length)]
+
+    df = df[(df.primshw.shw.conversion_gap < max_conversion_gap) & 
+            (df.primshw.shw.conversion_gap > min_conversion_gap)]
+
+    df = df[(df.primshw.shw.bestplane_dEdx > min_dedx) & (df.primshw.shw.bestplane_dEdx < max_dedx)]
+    
+    return df
+
+def make_nueccdf_withcuts_control(f):
+
+    score_cut=0.02
+    shower_scale=1.25
+    min_shower_energy=0.5
+    
+    max_track_length=1e5
+    min_conversion_gap=2
+    max_conversion_gap=1e9
+    min_dedx=3
+    max_dedx=6
+    
+    df = make_nueccdf(f)
+    df = df[df.slc.barycenterFM.score > score_cut]
+
+    df = multicol_add(df,(df.primshw.shw.maxplane_energy*shower_scale).rename(("primshw","shw","reco_energy")))
+    df = df[df.primshw.shw.reco_energy > min_shower_energy]
+    
+    df = df[np.isnan(df.primtrk.trk.len) | (df.primtrk.trk.len < max_track_length)]
+
+    df = df[(df.primshw.shw.conversion_gap < max_conversion_gap) & 
+            (df.primshw.shw.conversion_gap > min_conversion_gap)]
+
+    df = df[(df.primshw.shw.bestplane_dEdx > min_dedx) & (df.primshw.shw.bestplane_dEdx < max_dedx)]
+    
+    return df
+
+# ============================================================================
+# Data functions
+# ============================================================================
+
+def make_nueccdf_data(f):
+    slcdf = make_nueccdf(f)
+    # drop truth cols for data
+    slcdf = slcdf.drop('tmatch', axis=1,level=1) # slc level
+    slcdf = slcdf.drop('truth',  axis=1,level=2) # pfp level
+    
+    ## keep the only relevant column (for now)
+    framedf = make_framedf(f)[['frameApplyAtCaf']]
+    
+    df = multicol_merge(slcdf.reset_index(), 
+                        framedf.reset_index(),
+                        left_on=[('entry', '', '', '', '', '')],
+                        right_on=[('entry', '', '', '', '', '')], 
+                        how="left")
+    df = df.set_index(slcdf.index.names, verify_integrity=True)
+    return df
+
+# ============================================================================
+# MC truth merge helper
+# ============================================================================
+
+def _merge_nueccdf_with_mc_truth(slcdf, f, include_weights=False, multisim_nuniv=100, slim=False, **kwargs):
+    """
+    Helper function to merge a slc dataframe with MC truth information.
+    
+    Parameters
+    ----------
+    slcdf : pandas.DataFrame
+        Slice-level dataframe to merge truth information into
+    f : ROOT file
+        Input ROOT file
+    include_weights : bool, optional
+        Whether to include weights (default: False)
+    multisim_nuniv : int, optional
+        Number of multisim universes (default: 100)
+    slim : bool, optional
+        Whether to slim the output (default: False)
+    **kwargs : dict
+        Additional keyword arguments passed to make_mcnudf_nuecc
+    
+    Returns
+    -------
+    pandas.DataFrame
+        Merged dataframe with truth information
+    """
+    mcdf = make_mcnudf_nuecc(f, include_weights=include_weights, multisim_nuniv=multisim_nuniv, slim=slim, **kwargs)
+    mcdf.columns = pd.MultiIndex.from_tuples([tuple(["slc", "truth"] + list(c)) for c in mcdf.columns])
+    df = multicol_merge(slcdf.reset_index(), 
+                        mcdf.reset_index(),
+                        left_on=[('entry', '', '', '', '', ''), 
+                                ('slc', 'tmatch', 'idx', '', '', '')], 
+                        right_on=[('entry', '', '', '', '', ''), 
+                                ('rec.mc.nu..index', '', '')], 
+                        how="left")
+    df = df.set_index(slcdf.index.names, verify_integrity=True)
+    return df
+
+# ============================================================================
+# MC functions (with truth matching)
+# ============================================================================
+
+def make_nueccdf_mc(f, include_weights=False, multisim_nuniv=100, slim=False, **kwargs):
+    """
+    Merge base selection with MC truth information.
+    """
+    slcdf = make_nueccdf(f)
+    return _merge_nueccdf_with_mc_truth(slcdf, f, include_weights=include_weights, multisim_nuniv=multisim_nuniv, slim=slim, **kwargs)
+
+def make_nueccdf_withcuts_mc(f):
+    """
+    Merge pre-selected signal region with MC truth information.
+    """
+    slcdf = make_nueccdf_withcuts(f)
+    return _merge_nueccdf_with_mc_truth(slcdf, f, include_weights=False)
+
+def make_nueccdf_withcuts_control_mc(f):
+    """
+    Merge pre-selected control region with MC truth information.
+    """
+    slcdf = make_nueccdf_withcuts_control(f)
+    return _merge_nueccdf_with_mc_truth(slcdf, f, include_weights=False)
+
+# ============================================================================
+# Systematic weights helper
+# ============================================================================
+
+def _add_weights_to_nueccdf(df, f, multisim_nuniv=100, slim=False, wgt_types=["bnb", "genie"]):
+    """
+    Helper function to add systematic weights to a neutrino CC DataFrame.
+    
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Input dataframe with truth-matched information
+    f : ROOT file
+        Input ROOT file
+    multisim_nuniv : int, optional
+        Number of multisim universes (default: 100)
+    slim : bool, optional
+        Whether to slim the output (default: False)
+    wgt_types : list, optional
+        List of weight types to include, e.g. ["bnb", "genie"] (default: ["bnb", "genie"])
+    
+    Returns
+    -------
+    pandas.DataFrame
+        DataFrame with added weight columns
+    """
+    # Get only the unique truth-matched neutrino indices that survived selection
+    nu_indices = df[('slc', 'truth', 'ind', '', '', '')].dropna().astype(int)
+    nu_indices = nu_indices[~nu_indices.index.duplicated()]  # deduplicate
+    
+    wgt_dfs = []
+    
+    if "genie" in wgt_types:
+        geniewgtdf = geniesyst.geniesyst(f, 
+                                         nu_indices, 
+                                         multisim_nuniv=multisim_nuniv, 
+                                         slim=slim, 
+                                         systematics=None)
+        wgt_dfs.append(geniewgtdf)
+    
+    if "bnb" in wgt_types:
+        bnbwgtdf = bnbsyst.bnbsyst(f, 
+                                    nu_indices, 
+                                    multisim_nuniv=multisim_nuniv, 
+                                    slim=slim)
+        wgt_dfs.append(bnbwgtdf)
+    
+    if wgt_dfs:
+        wgtdf = pd.concat(wgt_dfs, axis=1)
+        del wgt_dfs  # free intermediate list
+        wgtdf.columns = pd.MultiIndex.from_tuples(
+            [tuple(["slc", "truth"] + list(c)) for c in wgtdf.columns]
+        )
+        df = multicol_concat(df, wgtdf)
+        del wgtdf
+    
+    return df
+
+# ============================================================================
+# MC functions with weights
+# ============================================================================
+
+def make_nueccdf_mc_wgt(f, multisim_nuniv=100, slim=False, wgt_types=["bnb", "genie"]):
+    """
+    Base selection with MC truth and systematic weights.
+    Weights are calculated for selected indices only to reduce overhead.
+    """
+    df = make_nueccdf_mc(f, include_weights=False)
+    return _add_weights_to_nueccdf(df, f, multisim_nuniv=multisim_nuniv, slim=slim, wgt_types=wgt_types)
+
+def make_nueccdf_withcuts_mc_wgt(f, multisim_nuniv=100, slim=False, wgt_types=["bnb", "genie"], **kwargs):
+    """
+    Pre-selected signal region with MC truth and systematic weights.
+    Weights are calculated for selected indices only to reduce overhead.
+    """
+    df = make_nueccdf_withcuts_mc(f)
+    return _add_weights_to_nueccdf(df, f, multisim_nuniv=multisim_nuniv, slim=slim, wgt_types=wgt_types)
+
+def make_nueccdf_withcuts_control_mc_wgt(f, multisim_nuniv=100, slim=False, wgt_types=["bnb", "genie"], **kwargs):
+    """
+    Pre-selected control region with MC truth and systematic weights.
+    Weights are calculated for selected indices only to reduce overhead.
+    """
+    df = make_nueccdf_withcuts_control_mc(f)
+    return _add_weights_to_nueccdf(df, f, multisim_nuniv=multisim_nuniv, slim=slim, wgt_types=wgt_types)
