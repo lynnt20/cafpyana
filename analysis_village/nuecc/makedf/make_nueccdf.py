@@ -19,16 +19,18 @@ def make_mcnudf_nuecc(f,**args):
     if 'mu'  in list(zip(*list(mcdf.columns)))[0]:  mcdf = mcdf.drop('mu', axis=1,level=0)
     if 'p'   in list(zip(*list(mcdf.columns)))[0]:  mcdf = mcdf.drop('p',  axis=1,level=0)
     if 'cpi' in list(zip(*list(mcdf.columns)))[0]:  mcdf = mcdf.drop('cpi',axis=1,level=0)
+    
+    mcdf.loc[:, ('e','totp','')] = np.sqrt(mcdf.e.genp.x**2 + mcdf.e.genp.y**2 + mcdf.e.genp.z**2)
+
+    # opening angles
+    mcdf.loc[:, ('e','dir','x')] = mcdf.e.genp.x/mcdf.e.totp
+    mcdf.loc[:, ('e','dir','y')] = mcdf.e.genp.y/mcdf.e.totp
+    mcdf.loc[:, ('e','dir','z')] = mcdf.e.genp.z/mcdf.e.totp
     return mcdf
 
 def make_sigmcnudf_wgt(f):
-    mcdf = make_mcdf(f)
+    mcdf = make_mcnudf_nuecc(f)
     mcdf["ind"] = mcdf.index.get_level_values(1)
-    
-    if 'mu'  in list(zip(*list(mcdf.columns)))[0]:  mcdf = mcdf.drop('mu', axis=1,level=0)
-    if 'p'   in list(zip(*list(mcdf.columns)))[0]:  mcdf = mcdf.drop('p',  axis=1,level=0)
-    if 'cpi' in list(zip(*list(mcdf.columns)))[0]:  mcdf = mcdf.drop('cpi',axis=1,level=0)
-    
     ## select out signal events 
     mcdf = mcdf[(InFV(df=mcdf.position, inzback=0, det="SBND_nohighyz")) &
                 (mcdf.iscc==1) & 
@@ -47,6 +49,42 @@ def make_sigmcnudf_wgt(f):
 # ============================================================================
 # Base selection functions (call hierarchy)
 # ============================================================================
+
+def make_nueccdf_debug(f):
+    det = loadbranches(f["recTree"], ["rec.hdr.det"]).rec.hdr.det
+    if (1 == det.unique()):
+        DETECTOR = "SBND"
+    else:
+        DETECTOR = "ICARUS"
+
+    assert DETECTOR == "SBND"
+    
+    pfpdf = make_pfpdf(f)
+    slcdf = loadbranches(f["recTree"], slcbranches+barycenterFMbranches)
+    slcdf = slcdf.rec
+    
+    pfpdf = pfpdf.drop('pfochar',axis=1,level=1)
+    ## primary shw candidate is shw pfp with highest energy, valid energy, and score < 0.5
+    shwdf = pfpdf[(pfpdf.pfp.trackScore < 0.5) & (pfpdf.pfp.shw.maxplane_energy > 0)].sort_values(pfpdf.pfp.index.names[:-1] + [('pfp','shw','maxplane_energy','','','')]).groupby(level=[0,1]).nth(-1)
+    # drop all columns that are from trk attributes
+    shwdf = shwdf.drop('trk',axis=1,level=1)
+    shwdf.columns = shwdf.columns.set_levels(['primshw'],level=0)
+    slcdf = multicol_merge(slcdf, shwdf.droplevel(-1),left_index=True,right_index=True,how="left",validate="one_to_one")
+
+    ## primary trk is track pfp with the longest length
+    trkdf = pfpdf[(pfpdf.pfp.trackScore > 0.5) & (pfpdf.pfp.trk.len > 0)].sort_values(pfpdf.pfp.index.names[:-1] + [('pfp','trk','len','','','')]).groupby(level=[0,1]).nth(-1)
+    # drop all columns that are from shw attributes
+    trkdf = trkdf.drop('shw',axis=1,level=1)
+    trkdf.columns = trkdf.columns.set_levels(['primtrk'],level=0)
+    slcdf = multicol_merge(slcdf, trkdf.droplevel(-1),left_index=True,right_index=True,how="left",validate="one_to_one")
+
+    ## secondary shower is shw pfp with second highest energy, valid energy, and score < 0.5 
+    shwsecdf = pfpdf[(pfpdf.pfp.trackScore < 0.5) & (pfpdf.pfp.shw.maxplane_energy > 0)].sort_values(pfpdf.pfp.index.names[:-1] + [('pfp','shw','maxplane_energy','','','')]).groupby(level=[0,1]).nth(-2)
+    shwsecdf = shwsecdf.drop('trk',axis=1,level=1)
+    shwsecdf.columns = shwsecdf.columns.set_levels(['secshw'],level=0)
+    slcdf = multicol_merge(slcdf, shwsecdf.droplevel(-1),left_index=True,right_index=True,how="left",validate="one_to_one")
+    
+    return slcdf
 
 def make_nueccdf(f):
     det = loadbranches(f["recTree"], ["rec.hdr.det"]).rec.hdr.det
@@ -164,6 +202,23 @@ def make_nueccdf_data(f):
     df = df.set_index(slcdf.index.names, verify_integrity=True)
     return df
 
+def make_nueccdf_debug_data(f):
+    slcdf = make_nueccdf_debug(f)
+    # drop truth cols for data
+    slcdf = slcdf.drop('tmatch', axis=1,level=1) # slc level
+    slcdf = slcdf.drop('truth',  axis=1,level=2) # pfp level
+    
+    ## keep the only relevant column (for now)
+    framedf = make_framedf(f)[['frameApplyAtCaf']]
+    
+    df = multicol_merge(slcdf.reset_index(), 
+                        framedf.reset_index(),
+                        left_on=[('entry', '', '', '', '', '')],
+                        right_on=[('entry', '', '', '', '', '')], 
+                        how="left")
+    df = df.set_index(slcdf.index.names, verify_integrity=True)
+    return df
+
 # ============================================================================
 # MC truth merge helper
 # ============================================================================
@@ -213,6 +268,13 @@ def make_nueccdf_mc(f, include_weights=False, multisim_nuniv=100, slim=False, **
     Merge base selection with MC truth information.
     """
     slcdf = make_nueccdf(f)
+    return _merge_nueccdf_with_mc_truth(slcdf, f, include_weights=include_weights, multisim_nuniv=multisim_nuniv, slim=slim, **kwargs)
+
+def make_nueccdf_debug_mc(f, include_weights=False, multisim_nuniv=100, slim=False, **kwargs):
+    """
+    Merge base selection with MC truth information for debug version of df.
+    """
+    slcdf = make_nueccdf_debug(f)
     return _merge_nueccdf_with_mc_truth(slcdf, f, include_weights=include_weights, multisim_nuniv=multisim_nuniv, slim=slim, **kwargs)
 
 def make_nueccdf_withcuts_mc(f):
