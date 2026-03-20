@@ -309,7 +309,7 @@ mcbranches = [
     "rec.mc.nu.iscc",
     "rec.mc.nu.genie_mode",
     "rec.mc.nu.parent_pdg",
-    "rec.mc.nu.genie_type",
+    "rec.mc.nu.genie_inttype",
     "rec.mc.nu.parent_dcy_E",
     "rec.mc.nu.genie_evtrec_idx",
 ]

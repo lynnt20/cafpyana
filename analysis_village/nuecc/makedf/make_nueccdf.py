@@ -28,7 +28,7 @@ def make_mcnudf_nuecc(f,**args):
     mcdf.loc[:, ('e','dir','z')] = mcdf.e.genp.z/mcdf.e.totp
     return mcdf
 
-def make_sigmcnudf_wgt(f):
+def make_mcnudf_nuecc_sigwgt(f):
     mcdf = make_mcnudf_nuecc(f)
     mcdf["ind"] = mcdf.index.get_level_values(1)
     ## select out signal events 
@@ -120,6 +120,10 @@ def make_nueccdf(f):
     shwsecdf.columns = shwsecdf.columns.set_levels(['secshw'],level=0)
     slcdf = multicol_merge(slcdf, shwsecdf.droplevel(-1),left_index=True,right_index=True,how="left",validate="one_to_one")
     
+    # add a shower energy variable that applies a scale factor to the max plane energy of the primary shower candidate
+    shower_scale=1.25
+    slcdf = multicol_add(slcdf,(slcdf.primshw.shw.maxplane_energy*shower_scale).rename(("primshw","shw","reco_energy")))
+    
     # pre-selection cuts
     slcdf = slcdf[slcdf.slc.is_clear_cosmic==0]
     slcdf = slcdf[slcdf.slc.nu_score > 0.4]
@@ -130,7 +134,6 @@ def make_nueccdf(f):
 def make_nueccdf_withcuts(f):
 
     score_cut=0.02
-    shower_scale=1.25
     min_shower_energy=0.5
     
     max_track_length=200
@@ -141,9 +144,6 @@ def make_nueccdf_withcuts(f):
     
     df = make_nueccdf(f)
     df = df[df.slc.barycenterFM.score > score_cut]
-
-    df = multicol_add(df,(df.primshw.shw.maxplane_energy*shower_scale).rename(("primshw","shw","reco_energy")))
-    df = df[df.primshw.shw.reco_energy > min_shower_energy]
     
     df = df[np.isnan(df.primtrk.trk.len) | (df.primtrk.trk.len < max_track_length)]
 
@@ -157,7 +157,6 @@ def make_nueccdf_withcuts(f):
 def make_nueccdf_withcuts_control(f):
 
     score_cut=0.02
-    shower_scale=1.25
     min_shower_energy=0.5
     
     max_track_length=1e5
@@ -168,9 +167,6 @@ def make_nueccdf_withcuts_control(f):
     
     df = make_nueccdf(f)
     df = df[df.slc.barycenterFM.score > score_cut]
-
-    df = multicol_add(df,(df.primshw.shw.maxplane_energy*shower_scale).rename(("primshw","shw","reco_energy")))
-    df = df[df.primshw.shw.reco_energy > min_shower_energy]
     
     df = df[np.isnan(df.primtrk.trk.len) | (df.primtrk.trk.len < max_track_length)]
 
