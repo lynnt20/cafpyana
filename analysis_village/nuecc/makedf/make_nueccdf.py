@@ -334,6 +334,13 @@ def _add_weights_to_nueccdf(df, f, multisim_nuniv=100, slim=False, wgt_types=["b
                                     slim=slim)
         wgt_dfs.append(bnbwgtdf)
     
+    if "g4" in wgt_types:
+        g4wgtdf = g4syst.g4syst(f, 
+                                 nu_indices, 
+                                 multisim_nuniv=multisim_nuniv, 
+                                 slim=slim)
+        wgt_dfs.append(g4wgtdf)
+    
     if wgt_dfs:
         wgtdf = pd.concat(wgt_dfs, axis=1)
         del wgt_dfs  # free intermediate list
