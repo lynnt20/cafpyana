@@ -28,7 +28,7 @@ def make_mcnudf_nuecc(f,**args):
     mcdf.loc[:, ('e','dir','z')] = mcdf.e.genp.z/mcdf.e.totp
     return mcdf
 
-def make_mcnudf_nuecc_sigwgt(f):
+def make_mcnudf_nuecc_sigwgt(f, **kwargs):
     mcdf = make_mcnudf_nuecc(f)
     mcdf["ind"] = mcdf.index.get_level_values(1)
     ## select out signal events 
@@ -42,9 +42,13 @@ def make_mcnudf_nuecc_sigwgt(f):
                                      mcdf.ind, 
                                      multisim_nuniv=100, 
                                      slim=False, 
-                                     systematics=None)
+                                     systematics=None,
+                                     **kwargs)
     mcdf = multicol_concat(mcdf, geniewgtdf)
     return mcdf
+
+def make_mcnudf_nuecc_sigwgt_ar23p(f):
+    return make_mcnudf_nuecc_sigwgt(f, ar23p=True)
 
 # ============================================================================
 # Base selection functions (call hierarchy)
