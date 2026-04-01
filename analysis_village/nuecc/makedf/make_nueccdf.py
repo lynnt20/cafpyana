@@ -78,12 +78,6 @@ def make_nueccdf_debug(f):
     trkdf.columns = trkdf.columns.set_levels(['primtrk'],level=0)
     slcdf = multicol_merge(slcdf, trkdf.droplevel(-1),left_index=True,right_index=True,how="left",validate="one_to_one")
 
-    ## secondary shower is shw pfp with second highest energy, valid energy, and score < 0.5 
-    shwsecdf = pfpdf[(pfpdf.pfp.trackScore < 0.5) & (pfpdf.pfp.shw.maxplane_energy > 0)].sort_values(pfpdf.pfp.index.names[:-1] + [('pfp','shw','maxplane_energy','','','')]).groupby(level=[0,1]).nth(-2)
-    shwsecdf = shwsecdf.drop('trk',axis=1,level=1)
-    shwsecdf.columns = shwsecdf.columns.set_levels(['secshw'],level=0)
-    slcdf = multicol_merge(slcdf, shwsecdf.droplevel(-1),left_index=True,right_index=True,how="left",validate="one_to_one")
-    
     return slcdf
 
 def make_nueccdf(f):
@@ -114,12 +108,6 @@ def make_nueccdf(f):
     trkdf.columns = trkdf.columns.set_levels(['primtrk'],level=0)
     slcdf = multicol_merge(slcdf, trkdf.droplevel(-1),left_index=True,right_index=True,how="left",validate="one_to_one")
 
-    ## secondary shower is shw pfp with second highest energy, valid energy, and score < 0.5 
-    shwsecdf = pfpdf[(pfpdf.pfp.trackScore < 0.5) & (pfpdf.pfp.shw.maxplane_energy > 0)].sort_values(pfpdf.pfp.index.names[:-1] + [('pfp','shw','maxplane_energy','','','')]).groupby(level=[0,1]).nth(-2)
-    shwsecdf = shwsecdf.drop('trk',axis=1,level=1)
-    shwsecdf.columns = shwsecdf.columns.set_levels(['secshw'],level=0)
-    slcdf = multicol_merge(slcdf, shwsecdf.droplevel(-1),left_index=True,right_index=True,how="left",validate="one_to_one")
-    
     # add a shower energy variable that applies a scale factor to the max plane energy of the primary shower candidate
     shower_scale=1.25
     slcdf = multicol_add(slcdf,(slcdf.primshw.shw.maxplane_energy*shower_scale).rename(("primshw","shw","reco_energy")))
@@ -291,7 +279,7 @@ def make_nueccdf_withcuts_control_mc(f):
 # Systematic weights helper
 # ============================================================================
 
-def _add_weights_to_nueccdf(df, f, multisim_nuniv=100, slim=False, wgt_types=["bnb", "genie"]):
+def _add_weights_to_nueccdf(df, f, multisim_nuniv=100, slim=False, wgt_types=["bnb", "genie","g4"]):
     """
     Helper function to add systematic weights to a neutrino CC DataFrame.
     
@@ -356,26 +344,26 @@ def _add_weights_to_nueccdf(df, f, multisim_nuniv=100, slim=False, wgt_types=["b
 # MC functions with weights
 # ============================================================================
 
-def make_nueccdf_mc_wgt(f, multisim_nuniv=100, slim=False, wgt_types=["bnb", "genie"]):
+def make_nueccdf_mc_wgt(f, multisim_nuniv=100, slim=False):
     """
     Base selection with MC truth and systematic weights.
     Weights are calculated for selected indices only to reduce overhead.
     """
     df = make_nueccdf_mc(f, include_weights=False)
-    return _add_weights_to_nueccdf(df, f, multisim_nuniv=multisim_nuniv, slim=slim, wgt_types=wgt_types)
+    return _add_weights_to_nueccdf(df, f, multisim_nuniv=multisim_nuniv, slim=slim)
 
-def make_nueccdf_withcuts_mc_wgt(f, multisim_nuniv=100, slim=False, wgt_types=["bnb", "genie"], **kwargs):
+def make_nueccdf_withcuts_mc_wgt(f, multisim_nuniv=100, slim=False, **kwargs):
     """
     Pre-selected signal region with MC truth and systematic weights.
     Weights are calculated for selected indices only to reduce overhead.
     """
     df = make_nueccdf_withcuts_mc(f)
-    return _add_weights_to_nueccdf(df, f, multisim_nuniv=multisim_nuniv, slim=slim, wgt_types=wgt_types)
+    return _add_weights_to_nueccdf(df, f, multisim_nuniv=multisim_nuniv, slim=slim)
 
-def make_nueccdf_withcuts_control_mc_wgt(f, multisim_nuniv=100, slim=False, wgt_types=["bnb", "genie"], **kwargs):
+def make_nueccdf_withcuts_control_mc_wgt(f, multisim_nuniv=100, slim=False, **kwargs):
     """
     Pre-selected control region with MC truth and systematic weights.
     Weights are calculated for selected indices only to reduce overhead.
     """
     df = make_nueccdf_withcuts_control_mc(f)
-    return _add_weights_to_nueccdf(df, f, multisim_nuniv=multisim_nuniv, slim=slim, wgt_types=wgt_types)
+    return _add_weights_to_nueccdf(df, f, multisim_nuniv=multisim_nuniv, slim=slim)
