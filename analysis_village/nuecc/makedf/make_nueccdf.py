@@ -16,16 +16,20 @@ def make_mcnulite_df_nuecc(f):
 def make_mcnudf_nuecc(f,**args):
     mcdf = make_mcnudf(f,**args)
     # drop mcdf columns not relevant for this analysis
-    if 'mu'  in list(zip(*list(mcdf.columns)))[0]:  mcdf = mcdf.drop('mu', axis=1,level=0)
+    # if 'mu'  in list(zip(*list(mcdf.columns)))[0]:  mcdf = mcdf.drop('mu', axis=1,level=0)
     if 'p'   in list(zip(*list(mcdf.columns)))[0]:  mcdf = mcdf.drop('p',  axis=1,level=0)
     if 'cpi' in list(zip(*list(mcdf.columns)))[0]:  mcdf = mcdf.drop('cpi',axis=1,level=0)
     
     mcdf.loc[:, ('e','totp','')] = np.sqrt(mcdf.e.genp.x**2 + mcdf.e.genp.y**2 + mcdf.e.genp.z**2)
-
-    # opening angles
     mcdf.loc[:, ('e','dir','x')] = mcdf.e.genp.x/mcdf.e.totp
     mcdf.loc[:, ('e','dir','y')] = mcdf.e.genp.y/mcdf.e.totp
     mcdf.loc[:, ('e','dir','z')] = mcdf.e.genp.z/mcdf.e.totp
+    
+    mcdf.loc[:, ('pi0','totp','')] = np.sqrt(mcdf.pi0.genp.x**2 + mcdf.pi0.genp.y**2 + mcdf.pi0.genp.z**2)
+    mcdf.loc[:, ('pi0','dir','x')] = mcdf.pi0.genp.x/mcdf.pi0.totp
+    mcdf.loc[:, ('pi0','dir','y')] = mcdf.pi0.genp.y/mcdf.pi0.totp
+    mcdf.loc[:, ('pi0','dir','z')] = mcdf.pi0.genp.z/mcdf.pi0.totp
+    
     return mcdf
 
 def make_mcnudf_nuecc_sigwgt(f, **kwargs):
@@ -76,7 +80,7 @@ def make_nueccdf_debug(f):
     slcdf = multicol_merge(slcdf, shwdf.droplevel(-1),left_index=True,right_index=True,how="left",validate="one_to_one")
 
     ## primary trk is track pfp with the longest length
-    trkdf = pfpdf[(pfpdf.pfp.trackScore > 0.5) & (pfpdf.pfp.trk.len > 0)].sort_values(pfpdf.pfp.index.names[:-1] + [('pfp','trk','len','','','')]).groupby(level=[0,1]).nth(-1)
+    trkdf = pfpdf[(pfpdf.pfp.trackScore >= 0.5) & (pfpdf.pfp.trk.len > 0)].sort_values(pfpdf.pfp.index.names[:-1] + [('pfp','trk','len','','','')]).groupby(level=[0,1]).nth(-1)
     # drop all columns that are from shw attributes
     trkdf = trkdf.drop('shw',axis=1,level=1)
     trkdf.columns = trkdf.columns.set_levels(['primtrk'],level=0)
@@ -94,31 +98,50 @@ def make_nueccdf(f):
     assert DETECTOR == "SBND"
     
     pfpdf = make_pfpdf(f)
+
     slcdf = loadbranches(f["recTree"], slcbranches+barycenterFMbranches)
     slcdf = slcdf.rec
     
     pfpdf = pfpdf.drop('pfochar',axis=1,level=1)
+    # pfpdf = pfpdf[pfpdf.pfp.trackScore>0]
+    
+    isshw = (pfpdf.pfp.trackScore < 0.5) & (pfpdf.pfp.shw.maxplane_energy > 0) & (pfpdf.pfp.trackScore > 0) & (pfpdf.pfp.shw.start.x == pfpdf.pfp.shw.start.x) 
+    istrk = (pfpdf.pfp.trackScore >= 0.5) & (pfpdf.pfp.trk.len > 0) & (pfpdf.pfp.trk.start.x == pfpdf.pfp.trk.start.x)
+    isnon = ~(isshw | istrk) 
+
+    slcdf = multicol_add(slcdf, isshw.groupby(level=[0,1]).sum().rename(('slc','nshw')))
+    slcdf = multicol_add(slcdf, istrk.groupby(level=[0,1]).sum().rename(('slc','ntrk')))
+    slcdf = multicol_add(slcdf, isnon.groupby(level=[0,1]).sum().rename(('slc','nnon')))
+    
+    slcdf = multicol_add(slcdf, pfpdf[isshw].pfp.shw.maxplane_energy.groupby(level=[0,1]).sum().rename(('slc','tot_shw_energy')))
+    
     ## primary shw candidate is shw pfp with highest energy, valid energy, and score < 0.5
-    shwdf = pfpdf[(pfpdf.pfp.trackScore < 0.5) & (pfpdf.pfp.shw.maxplane_energy > 0)].sort_values(pfpdf.pfp.index.names[:-1] + [('pfp','shw','maxplane_energy','','','')]).groupby(level=[0,1]).nth(-1)
+    shwdf = pfpdf[isshw].sort_values(pfpdf.pfp.index.names[:-1] + [('pfp','shw','maxplane_energy','','','')]).groupby(level=[0,1]).nth(-1)
     # drop all columns that are from trk attributes
     shwdf = shwdf.drop('trk',axis=1,level=1)
     shwdf.columns = shwdf.columns.set_levels(['primshw'],level=0)
     slcdf = multicol_merge(slcdf, shwdf.droplevel(-1),left_index=True,right_index=True,how="right",validate="one_to_one")
 
+    ## secondary shower is shw pfp with second highest energy, valid energy, and score < 0.5 
+    shwsecdf = pfpdf[isshw].sort_values(pfpdf.pfp.index.names[:-1] + [('pfp','shw','maxplane_energy','','','')]).groupby(level=[0,1]).nth(-2)
+    shwsecdf = shwsecdf.drop('trk',axis=1,level=1)
+    shwsecdf.columns = shwsecdf.columns.set_levels(['secshw'],level=0)
+    slcdf = multicol_merge(slcdf, shwsecdf.droplevel(-1),left_index=True,right_index=True,how="left",validate="one_to_one")
+
     ## primary trk is track pfp with the longest length
-    trkdf = pfpdf[(pfpdf.pfp.trackScore > 0.5) & (pfpdf.pfp.trk.len > 0)].sort_values(pfpdf.pfp.index.names[:-1] + [('pfp','trk','len','','','')]).groupby(level=[0,1]).nth(-1)
+    trkdf = pfpdf[istrk].sort_values(pfpdf.pfp.index.names[:-1] + [('pfp','trk','len','','','')]).groupby(level=[0,1]).nth(-1)
     # drop all columns that are from shw attributes
     trkdf = trkdf.drop('shw',axis=1,level=1)
     trkdf.columns = trkdf.columns.set_levels(['primtrk'],level=0)
     slcdf = multicol_merge(slcdf, trkdf.droplevel(-1),left_index=True,right_index=True,how="left",validate="one_to_one")
 
     # add a shower energy variable that applies a scale factor to the max plane energy of the primary shower candidate
-    shower_scale=1.25
+    shower_scale=1.17
     slcdf = multicol_add(slcdf,(slcdf.primshw.shw.maxplane_energy*shower_scale).rename(("primshw","shw","reco_energy")))
     
     # pre-selection cuts
     slcdf = slcdf[slcdf.slc.is_clear_cosmic==0]
-    slcdf = slcdf[slcdf.slc.nu_score > 0.4]
+    slcdf = slcdf[slcdf.slc.nu_score > 0.5]
     slcdf = slcdf[InFV(df=slcdf.slc.vertex, det="SBND_nohighyz", inzback=0)]    
     
     return slcdf
@@ -283,7 +306,7 @@ def make_nueccdf_withcuts_control_mc(f):
 # Systematic weights helper
 # ============================================================================
 
-def _add_weights_to_nueccdf(df, f, multisim_nuniv=100, slim=False, wgt_types=["bnb", "genie","g4"]):
+def _add_weights_to_nueccdf(df, f, multisim_nuniv=100, slim=False, wgt_types=["bnb", "genie","g4"],ar23p=False):
     """
     Helper function to add systematic weights to a neutrino CC DataFrame.
     
@@ -316,7 +339,8 @@ def _add_weights_to_nueccdf(df, f, multisim_nuniv=100, slim=False, wgt_types=["b
                                          nu_indices, 
                                          multisim_nuniv=multisim_nuniv, 
                                          slim=slim, 
-                                         systematics=None)
+                                         systematics=None,
+                                         ar23p=ar23p)
         wgt_dfs.append(geniewgtdf)
     
     if "bnb" in wgt_types:
@@ -348,13 +372,13 @@ def _add_weights_to_nueccdf(df, f, multisim_nuniv=100, slim=False, wgt_types=["b
 # MC functions with weights
 # ============================================================================
 
-def make_nueccdf_mc_wgt(f, multisim_nuniv=100, slim=False):
+def make_nueccdf_mc_wgt(f, multisim_nuniv=100, slim=False, **kwargs):
     """
     Base selection with MC truth and systematic weights.
     Weights are calculated for selected indices only to reduce overhead.
     """
     df = make_nueccdf_mc(f, include_weights=False)
-    return _add_weights_to_nueccdf(df, f, multisim_nuniv=multisim_nuniv, slim=slim)
+    return _add_weights_to_nueccdf(df, f, multisim_nuniv=multisim_nuniv, slim=slim, **kwargs)
 
 def make_nueccdf_withcuts_mc_wgt(f, multisim_nuniv=100, slim=False, **kwargs):
     """
@@ -371,3 +395,6 @@ def make_nueccdf_withcuts_control_mc_wgt(f, multisim_nuniv=100, slim=False, **kw
     """
     df = make_nueccdf_withcuts_control_mc(f)
     return _add_weights_to_nueccdf(df, f, multisim_nuniv=multisim_nuniv, slim=slim)
+
+def make_nueccdf_mc_wgt_ar23p(f, multisim_nuniv=100, slim=False):
+    return make_nueccdf_mc_wgt(f, multisim_nuniv=multisim_nuniv, slim=slim, ar23p=True)
