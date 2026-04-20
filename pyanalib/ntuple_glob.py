@@ -195,8 +195,8 @@ def _loaddf(applyfs, preprocess, g):
                     dfs.append(df_histpot)
 
                     df_histgenevt = make_histgenevtdf(f)
-                    if "TotalGenEvents" not in f:
-                        print(f"File ({fname}) missing TotalGenEvents histogram. Using empty DataFrame.")
+                    # if "TotalGenEvents" not in f:
+                        # print(f"File ({fname}) missing TotalGenEvents histogram. Using empty DataFrame.")
                     df_histgenevt["__ntuple"] = index
                     df_histgenevt.set_index("__ntuple", append=True, inplace=True)
                     new_order = [df_histgenevt.index.nlevels - 1] + list(range(df_histgenevt.index.nlevels - 1))
@@ -204,7 +204,7 @@ def _loaddf(applyfs, preprocess, g):
                     dfs.append(df_histgenevt)
 
                 break
-            except (OSError, ValueError, RuntimeError, TimeoutError, KeyError) as e:
+            except (OSError, ValueError, RuntimeError, TimeoutError, KeyError, TypeError) as e:
                 dfs = None
                 if attempt + 1 < NTUPLE_READ_RETRIES and _is_transient_io_error(e):
                     wait_s = NTUPLE_RETRY_SLEEP * (attempt + 1)

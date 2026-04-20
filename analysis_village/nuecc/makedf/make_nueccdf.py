@@ -143,6 +143,7 @@ def make_nueccdf(f):
     slcdf = slcdf[slcdf.slc.is_clear_cosmic==0]
     slcdf = slcdf[slcdf.slc.nu_score > 0.5]
     slcdf = slcdf[InFV(df=slcdf.slc.vertex, det="SBND_nohighyz", inzback=0)]    
+    slcdf = slcdf[slcdf.primshw.shw.reco_energy > 0.5]
     
     return slcdf
 
@@ -331,6 +332,10 @@ def _add_weights_to_nueccdf(df, f, multisim_nuniv=100, slim=False, wgt_types=["b
     # Get only the unique truth-matched neutrino indices that survived selection
     nu_indices = df[('slc', 'truth', 'ind', '', '', '')].dropna().astype(int)
     nu_indices = nu_indices[~nu_indices.index.duplicated()]  # deduplicate
+
+    # No selected neutrinos in this file: skip weight extraction entirely.
+    if nu_indices.empty:
+        return df
     
     wgt_dfs = []
     
@@ -341,25 +346,30 @@ def _add_weights_to_nueccdf(df, f, multisim_nuniv=100, slim=False, wgt_types=["b
                                          slim=slim, 
                                          systematics=None,
                                          ar23p=ar23p)
-        wgt_dfs.append(geniewgtdf)
+        if geniewgtdf is not None and geniewgtdf.shape[1] > 0:
+            wgt_dfs.append(geniewgtdf)
     
     if "bnb" in wgt_types:
         bnbwgtdf = bnbsyst.bnbsyst(f, 
                                     nu_indices, 
                                     multisim_nuniv=multisim_nuniv, 
                                     slim=slim)
-        wgt_dfs.append(bnbwgtdf)
+        if bnbwgtdf is not None and bnbwgtdf.shape[1] > 0:
+            wgt_dfs.append(bnbwgtdf)
     
     if "g4" in wgt_types:
         g4wgtdf = g4syst.g4syst(f, 
                                  nu_indices, 
                                  multisim_nuniv=multisim_nuniv, 
                                  slim=slim)
-        wgt_dfs.append(g4wgtdf)
+        if g4wgtdf is not None and g4wgtdf.shape[1] > 0:
+            wgt_dfs.append(g4wgtdf)
     
     if wgt_dfs:
         wgtdf = pd.concat(wgt_dfs, axis=1)
         del wgt_dfs  # free intermediate list
+        if wgtdf.shape[1] == 0:
+            return df
         wgtdf.columns = pd.MultiIndex.from_tuples(
             [tuple(["slc", "truth"] + list(c)) for c in wgtdf.columns]
         )
