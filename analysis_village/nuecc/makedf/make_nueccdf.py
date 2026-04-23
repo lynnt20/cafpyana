@@ -36,11 +36,11 @@ def make_mcnudf_nuecc_sigwgt(f, **kwargs):
     mcdf = make_mcnudf_nuecc(f)
     mcdf["ind"] = mcdf.index.get_level_values(1)
     ## select out signal events 
-    mcdf = mcdf[(InFV(df=mcdf.position, inzback=0, det="SBND_nohighyz")) &
-                (mcdf.iscc==1) & 
-                (abs(mcdf.pdg)==12) & 
-                (abs(mcdf.e.pdg)==11) & 
-                (mcdf.e.genE > 0.5)] # nueCC signal definition
+    # mcdf = mcdf[(InFV(df=mcdf.position, inzback=0, det="SBND_nohighyz")) &
+    #             (mcdf.iscc==1) & 
+    #             (abs(mcdf.pdg)==12) & 
+    #             (abs(mcdf.e.pdg)==11) & 
+    #             (mcdf.e.genE > 0.5)] # nueCC signal definition
     
     geniewgtdf = geniesyst.geniesyst(f, 
                                      mcdf.ind, 
@@ -52,7 +52,7 @@ def make_mcnudf_nuecc_sigwgt(f, **kwargs):
     return mcdf
 
 def make_mcnudf_nuecc_sigwgt_ar23p(f):
-    return make_mcnudf_nuecc_sigwgt(f, ar23p=True)
+    return make_mcnudf_nuecc_sigwgt(f, ar23p_only=True)
 
 # ============================================================================
 # Base selection functions (call hierarchy)
@@ -65,7 +65,7 @@ def make_nueccdf_debug(f):
     else:
         DETECTOR = "ICARUS"
 
-    assert DETECTOR == "SBND"
+    # assert DETECTOR == "SBND"
     
     pfpdf = make_pfpdf(f)
     slcdf = loadbranches(f["recTree"], slcbranches+barycenterFMbranches)
@@ -95,7 +95,7 @@ def make_nueccdf(f):
     else:
         DETECTOR = "ICARUS"
 
-    assert DETECTOR == "SBND"
+    # assert DETECTOR == "SBND"
     
     pfpdf = make_pfpdf(f)
 
