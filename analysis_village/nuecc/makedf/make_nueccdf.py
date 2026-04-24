@@ -35,12 +35,14 @@ def make_mcnudf_nuecc(f,**args):
 def make_mcnudf_nuecc_sigwgt(f, **kwargs):
     mcdf = make_mcnudf_nuecc(f)
     mcdf["ind"] = mcdf.index.get_level_values(1)
-    ## select out signal events 
-    # mcdf = mcdf[(InFV(df=mcdf.position, inzback=0, det="SBND_nohighyz")) &
-    #             (mcdf.iscc==1) & 
-    #             (abs(mcdf.pdg)==12) & 
-    #             (abs(mcdf.e.pdg)==11) & 
-    #             (mcdf.e.genE > 0.5)] # nueCC signal definition
+    # select first-level groups that contain at least one signal event
+    signal_mask = ((InFV(df=mcdf.position, inzback=0, det="SBND_nohighyz")) &
+                   (mcdf.iscc==1) &
+                   (abs(mcdf.pdg)==12) &
+                   (abs(mcdf.e.pdg)==11) &
+                   (mcdf.e.genE > 0.5)) # nueCC signal definition
+    sig_groups = mcdf[signal_mask].index.get_level_values(0).unique()
+    mcdf = mcdf[mcdf.index.get_level_values(0).isin(sig_groups)]
     
     geniewgtdf = geniesyst.geniesyst(f, 
                                      mcdf.ind, 
