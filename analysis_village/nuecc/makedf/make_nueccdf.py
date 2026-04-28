@@ -32,18 +32,24 @@ def make_mcnudf_nuecc(f,**args):
     
     return mcdf
 
-def make_mcnudf_nuecc_sigwgt(f, **kwargs):
+def make_mcnudf_nuecc_sigwgt(f, int_only=True,**kwargs):
     mcdf = make_mcnudf_nuecc(f)
     mcdf["ind"] = mcdf.index.get_level_values(1)
-    # select first-level groups that contain at least one signal event
+    
     signal_mask = ((InFV(df=mcdf.position, inzback=0, det="SBND_nohighyz")) &
                    (mcdf.iscc==1) &
                    (abs(mcdf.pdg)==12) &
                    (abs(mcdf.e.pdg)==11) &
                    (mcdf.e.genE > 0.5)) # nueCC signal definition
-    sig_groups = mcdf[signal_mask].index.get_level_values(0).unique()
-    mcdf = mcdf[mcdf.index.get_level_values(0).isin(sig_groups)]
+    if int_only:
+        mcdf = mcdf[signal_mask]
+    else:
+        # select first-level groups that contain at least one signal event
+        sig_groups = mcdf[signal_mask].index.get_level_values(0).unique()
+        mcdf = mcdf[mcdf.index.get_level_values(0).isin(sig_groups)]
     
+    if mcdf.empty:
+        return mcdf  # skip weight merging if no signal events
     geniewgtdf = geniesyst.geniesyst(f, 
                                      mcdf.ind, 
                                      multisim_nuniv=100, 
@@ -54,41 +60,12 @@ def make_mcnudf_nuecc_sigwgt(f, **kwargs):
     return mcdf
 
 def make_mcnudf_nuecc_sigwgt_ar23p(f):
-    return make_mcnudf_nuecc_sigwgt(f, ar23p_only=True)
+    # get ar23p weights for all interactions with a signal event 
+    return make_mcnudf_nuecc_sigwgt(f, int_only=False,ar23p_only=True)
 
 # ============================================================================
 # Base selection functions (call hierarchy)
 # ============================================================================
-
-def make_nueccdf_debug(f):
-    det = loadbranches(f["recTree"], ["rec.hdr.det"]).rec.hdr.det
-    if (1 == det.unique()):
-        DETECTOR = "SBND"
-    else:
-        DETECTOR = "ICARUS"
-
-    # assert DETECTOR == "SBND"
-    
-    pfpdf = make_pfpdf(f)
-    slcdf = loadbranches(f["recTree"], slcbranches+barycenterFMbranches)
-    slcdf = slcdf.rec
-    
-    pfpdf = pfpdf.drop('pfochar',axis=1,level=1)
-    ## primary shw candidate is shw pfp with highest energy, valid energy, and score < 0.5
-    shwdf = pfpdf[(pfpdf.pfp.trackScore < 0.5) & (pfpdf.pfp.shw.maxplane_energy > 0)].sort_values(pfpdf.pfp.index.names[:-1] + [('pfp','shw','maxplane_energy','','','')]).groupby(level=[0,1]).nth(-1)
-    # drop all columns that are from trk attributes
-    shwdf = shwdf.drop('trk',axis=1,level=1)
-    shwdf.columns = shwdf.columns.set_levels(['primshw'],level=0)
-    slcdf = multicol_merge(slcdf, shwdf.droplevel(-1),left_index=True,right_index=True,how="left",validate="one_to_one")
-
-    ## primary trk is track pfp with the longest length
-    trkdf = pfpdf[(pfpdf.pfp.trackScore >= 0.5) & (pfpdf.pfp.trk.len > 0)].sort_values(pfpdf.pfp.index.names[:-1] + [('pfp','trk','len','','','')]).groupby(level=[0,1]).nth(-1)
-    # drop all columns that are from shw attributes
-    trkdf = trkdf.drop('shw',axis=1,level=1)
-    trkdf.columns = trkdf.columns.set_levels(['primtrk'],level=0)
-    slcdf = multicol_merge(slcdf, trkdf.droplevel(-1),left_index=True,right_index=True,how="left",validate="one_to_one")
-
-    return slcdf
 
 def make_nueccdf(f):
     det = loadbranches(f["recTree"], ["rec.hdr.det"]).rec.hdr.det
@@ -149,75 +126,12 @@ def make_nueccdf(f):
     
     return slcdf
 
-def make_nueccdf_withcuts(f):
-
-    score_cut=0.02
-    min_shower_energy=0.5
-    
-    max_track_length=200
-    min_conversion_gap=0.001
-    max_conversion_gap=2
-    min_dedx=1.25
-    max_dedx=2.5
-    
-    df = make_nueccdf(f)
-    df = df[df.slc.barycenterFM.score > score_cut]
-    
-    df = df[np.isnan(df.primtrk.trk.len) | (df.primtrk.trk.len < max_track_length)]
-
-    df = df[(df.primshw.shw.conversion_gap < max_conversion_gap) & 
-            (df.primshw.shw.conversion_gap > min_conversion_gap)]
-
-    df = df[(df.primshw.shw.bestplane_dEdx > min_dedx) & (df.primshw.shw.bestplane_dEdx < max_dedx)]
-    
-    return df
-
-def make_nueccdf_withcuts_control(f):
-
-    score_cut=0.02
-    min_shower_energy=0.5
-    
-    max_track_length=1e5
-    min_conversion_gap=2
-    max_conversion_gap=1e9
-    min_dedx=3
-    max_dedx=6
-    
-    df = make_nueccdf(f)
-    df = df[df.slc.barycenterFM.score > score_cut]
-    
-    df = df[np.isnan(df.primtrk.trk.len) | (df.primtrk.trk.len < max_track_length)]
-
-    df = df[(df.primshw.shw.conversion_gap < max_conversion_gap) & 
-            (df.primshw.shw.conversion_gap > min_conversion_gap)]
-
-    df = df[(df.primshw.shw.bestplane_dEdx > min_dedx) & (df.primshw.shw.bestplane_dEdx < max_dedx)]
-    
-    return df
-
 # ============================================================================
 # Data functions
 # ============================================================================
 
 def make_nueccdf_data(f):
     slcdf = make_nueccdf(f)
-    # drop truth cols for data
-    slcdf = slcdf.drop('tmatch', axis=1,level=1) # slc level
-    slcdf = slcdf.drop('truth',  axis=1,level=2) # pfp level
-    
-    ## keep the only relevant column (for now)
-    framedf = make_framedf(f)[['frameApplyAtCaf']]
-    
-    df = multicol_merge(slcdf.reset_index(), 
-                        framedf.reset_index(),
-                        left_on=[('entry', '', '', '', '', '')],
-                        right_on=[('entry', '', '', '', '', '')], 
-                        how="left")
-    df = df.set_index(slcdf.index.names, verify_integrity=True)
-    return df
-
-def make_nueccdf_debug_data(f):
-    slcdf = make_nueccdf_debug(f)
     # drop truth cols for data
     slcdf = slcdf.drop('tmatch', axis=1,level=1) # slc level
     slcdf = slcdf.drop('truth',  axis=1,level=2) # pfp level
@@ -283,27 +197,6 @@ def make_nueccdf_mc(f, include_weights=False, multisim_nuniv=100, slim=False, **
     """
     slcdf = make_nueccdf(f)
     return _merge_nueccdf_with_mc_truth(slcdf, f, include_weights=include_weights, multisim_nuniv=multisim_nuniv, slim=slim, **kwargs)
-
-def make_nueccdf_debug_mc(f, include_weights=False, multisim_nuniv=100, slim=False, **kwargs):
-    """
-    Merge base selection with MC truth information for debug version of df.
-    """
-    slcdf = make_nueccdf_debug(f)
-    return _merge_nueccdf_with_mc_truth(slcdf, f, include_weights=include_weights, multisim_nuniv=multisim_nuniv, slim=slim, **kwargs)
-
-def make_nueccdf_withcuts_mc(f):
-    """
-    Merge pre-selected signal region with MC truth information.
-    """
-    slcdf = make_nueccdf_withcuts(f)
-    return _merge_nueccdf_with_mc_truth(slcdf, f, include_weights=False)
-
-def make_nueccdf_withcuts_control_mc(f):
-    """
-    Merge pre-selected control region with MC truth information.
-    """
-    slcdf = make_nueccdf_withcuts_control(f)
-    return _merge_nueccdf_with_mc_truth(slcdf, f, include_weights=False)
 
 # ============================================================================
 # Systematic weights helper
@@ -391,22 +284,3 @@ def make_nueccdf_mc_wgt(f, multisim_nuniv=100, slim=False, **kwargs):
     """
     df = make_nueccdf_mc(f, include_weights=False)
     return _add_weights_to_nueccdf(df, f, multisim_nuniv=multisim_nuniv, slim=slim, **kwargs)
-
-def make_nueccdf_withcuts_mc_wgt(f, multisim_nuniv=100, slim=False, **kwargs):
-    """
-    Pre-selected signal region with MC truth and systematic weights.
-    Weights are calculated for selected indices only to reduce overhead.
-    """
-    df = make_nueccdf_withcuts_mc(f)
-    return _add_weights_to_nueccdf(df, f, multisim_nuniv=multisim_nuniv, slim=slim)
-
-def make_nueccdf_withcuts_control_mc_wgt(f, multisim_nuniv=100, slim=False, **kwargs):
-    """
-    Pre-selected control region with MC truth and systematic weights.
-    Weights are calculated for selected indices only to reduce overhead.
-    """
-    df = make_nueccdf_withcuts_control_mc(f)
-    return _add_weights_to_nueccdf(df, f, multisim_nuniv=multisim_nuniv, slim=slim)
-
-def make_nueccdf_mc_wgt_ar23p(f, multisim_nuniv=100, slim=False):
-    return make_nueccdf_mc_wgt(f, multisim_nuniv=multisim_nuniv, slim=slim, ar23p=True)
