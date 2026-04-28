@@ -61,6 +61,10 @@ def make_mcnudf_nuecc_sigwgt(f, int_only=True,**kwargs):
 
 def make_mcnudf_nuecc_sigwgt_ar23p(f):
     # get ar23p weights for all interactions with a signal event 
+    return make_mcnudf_nuecc_sigwgt(f, int_only=True,ar23p=True)
+
+def make_mcnudf_nuecc_sigwgt_ar23p_only(f):
+    # get ar23p weights for all interactions with a signal event 
     return make_mcnudf_nuecc_sigwgt(f, int_only=False,ar23p_only=True)
 
 # ============================================================================
