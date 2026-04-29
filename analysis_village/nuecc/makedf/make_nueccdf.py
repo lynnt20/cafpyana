@@ -288,3 +288,11 @@ def make_nueccdf_mc_wgt(f, multisim_nuniv=100, slim=False, **kwargs):
     """
     df = make_nueccdf_mc(f, include_weights=False)
     return _add_weights_to_nueccdf(df, f, multisim_nuniv=multisim_nuniv, slim=slim, **kwargs)
+
+def make_nueccdf_mc_wgt_ar23(f, multisim_nuniv=100, slim=False, **kwargs):
+    """
+    Base selection with MC truth and systematic weights.
+    Weights are calculated for selected indices only to reduce overhead.
+    """
+    df = make_nueccdf_mc(f, include_weights=False)
+    return _add_weights_to_nueccdf(df, f, multisim_nuniv=multisim_nuniv, slim=slim, ar23p=True,**kwargs)

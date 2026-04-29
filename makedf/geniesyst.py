@@ -144,7 +144,7 @@ def geniesyst(f, nuind, multisim_nuniv=100, slim=False, systematics=None, ar23p=
     
     if ar23p:
         systematics_list = ar23p_genie_systematics + regen_systematics
-    if ar23p_only:
+    elif ar23p_only:
         systematics_list = ar23p_genie_systematics
     else:
         systematics_list = regen_systematics
