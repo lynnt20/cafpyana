@@ -245,7 +245,7 @@ def make_nueccdf_base_mc(f):
     slcdf = make_nueccdf_base(f)
     return _merge_nueccdf_with_mc_truth(slcdf, f)
 
-def make_nueccdf_mc(f)
+def make_nueccdf_mc(f):
     slcdf = make_nueccdf(f)
     return _merge_nueccdf_with_mc_truth(slcdf, f)
 
