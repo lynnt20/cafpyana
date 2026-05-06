@@ -127,6 +127,9 @@ def make_nueccdf_base(f):
     slcdf = multicol_add(slcdf, get_pfpcontained(pfpdf, margin=50.0).rename(('slc','contained','50cm')))
     slcdf = multicol_add(slcdf, get_pfpcontained(pfpdf, margin=75.0).rename(('slc','contained','75cm')))
     slcdf = multicol_add(slcdf, get_pfpcontained(pfpdf, margin=100.0).rename(('slc','contained','100cm')))
+    slcdf = multicol_add(slcdf, get_pfpcontained(pfpdf, margin=125.0).rename(('slc','contained','125cm')))
+    slcdf = multicol_add(slcdf, get_pfpcontained(pfpdf, margin=150.0).rename(('slc','contained','150cm')))
+
 
     pfpdf = pfpdf.drop('pfochar',axis=1,level=1)
     
