@@ -116,7 +116,7 @@ def make_nueccdf_base(f):
     
     pfpdf = make_pfpdf(f)
 
-    slcdf = loadbranches(f["recTree"], slcbranches)#+barycenterFMbranches)
+    slcdf = loadbranches(f["recTree"], slcbranches+barycenterFMbranches)
     slcdf = slcdf.rec
 
     slcdf = multicol_add(slcdf, get_pfpcontained(pfpdf, margin=0.0).rename(('slc','contained','0cm')))
