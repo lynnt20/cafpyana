@@ -3,6 +3,42 @@ from pyanalib.pandas_helpers import *
 from makedf.util import *
 
 # ============================================================================
+# Helper functions
+# ============================================================================
+
+def get_pfpcontained(pfpdf, margin=0.0):
+    """
+    Compute pfpcontained flag for slices with optional distance margin.
+
+    Checks if all PFPs in a slice satisfy containment criteria. A PFP is
+    considered contained if both its track and shower don't cross the
+    specified boundary.
+
+    Parameters
+    ----------
+    pfpdf : pandas.DataFrame
+        PFP-level dataframe with MultiIndex [run, event, pfp]
+    margin : float, optional
+        Distance margin in cm from YZ=0 plane (default: 0.0).
+        E.g., margin=5 requires |x| > 5 for both start and end points.
+
+    Returns
+    -------
+    pandas.Series
+        Boolean series indexed by [run, event] indicating if all pfps
+        in the slice are contained
+    """
+
+    trk_contained = (pfpdf.pfp.trk.start.x > 0) == (pfpdf.pfp.trk.end.x > 0)
+    shw_contained = (pfpdf.pfp.shw.start.x > 0) == (pfpdf.pfp.shw.end.x > 0)
+    if margin == 0.0:
+        return (trk_contained & shw_contained).groupby(level=[0, 1]).all()
+    else:
+        trk_margin = (abs(pfpdf.pfp.trk.start.x) > margin) == (abs(pfpdf.pfp.trk.end.x) > margin)
+        shw_margin = (abs(pfpdf.pfp.shw.start.x) > margin) == (abs(pfpdf.pfp.shw.end.x) > margin)
+        return (trk_contained & shw_contained & trk_margin & shw_margin).groupby(level=[0, 1]).all()
+
+# ============================================================================
 # Independent base functions
 # ============================================================================
 
@@ -82,11 +118,16 @@ def make_nueccdf(f):
     
     pfpdf = make_pfpdf(f)
 
-    slcdf = loadbranches(f["recTree"], slcbranches+barycenterFMbranches)
+    slcdf = loadbranches(f["recTree"], slcbranches)#+barycenterFMbranches)
     slcdf = slcdf.rec
-    
+
+    slcdf = multicol_add(slcdf, get_pfpcontained(pfpdf, margin=0.0).rename(('slc','contained','0cm')))
+    slcdf = multicol_add(slcdf, get_pfpcontained(pfpdf, margin=5.0).rename(('slc','contained','5cm')))
+    slcdf = multicol_add(slcdf, get_pfpcontained(pfpdf, margin=10.0).rename(('slc','contained','10cm')))
+    slcdf = multicol_add(slcdf, get_pfpcontained(pfpdf, margin=20.0).rename(('slc','contained','20cm')))
+    slcdf = multicol_add(slcdf, get_pfpcontained(pfpdf, margin=40.0).rename(('slc','contained','40cm')))
+
     pfpdf = pfpdf.drop('pfochar',axis=1,level=1)
-    # pfpdf = pfpdf[pfpdf.pfp.trackScore>0]
     
     isshw = (pfpdf.pfp.trackScore < 0.5) & (pfpdf.pfp.shw.maxplane_energy > 0) & (pfpdf.pfp.trackScore > 0) & (pfpdf.pfp.shw.start.x == pfpdf.pfp.shw.start.x) 
     istrk = (pfpdf.pfp.trackScore >= 0.5) & (pfpdf.pfp.trk.len > 0) & (pfpdf.pfp.trk.start.x == pfpdf.pfp.trk.start.x)
@@ -126,7 +167,7 @@ def make_nueccdf(f):
     slcdf = slcdf[slcdf.slc.is_clear_cosmic==0]
     slcdf = slcdf[slcdf.slc.nu_score > 0.5]
     slcdf = slcdf[InFV(df=slcdf.slc.vertex, det="SBND_nohighyz", inzback=0)]    
-    slcdf = slcdf[slcdf.primshw.shw.reco_energy > 0.5]
+    # slcdf = slcdf[slcdf.primshw.shw.reco_energy > 0.5]
     
     return slcdf
 
