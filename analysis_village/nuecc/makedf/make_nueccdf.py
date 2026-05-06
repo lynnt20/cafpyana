@@ -107,14 +107,12 @@ def make_mcnudf_nuecc_sigwgt_ar23p_only(f):
 # Base selection functions (call hierarchy)
 # ============================================================================
 
-def make_nueccdf(f):
+def make_nueccdf_base(f):
     det = loadbranches(f["recTree"], ["rec.hdr.det"]).rec.hdr.det
     if (1 == det.unique()):
         DETECTOR = "SBND"
     else:
         DETECTOR = "ICARUS"
-
-    # assert DETECTOR == "SBND"
     
     pfpdf = make_pfpdf(f)
 
@@ -125,7 +123,8 @@ def make_nueccdf(f):
     slcdf = multicol_add(slcdf, get_pfpcontained(pfpdf, margin=5.0).rename(('slc','contained','5cm')))
     slcdf = multicol_add(slcdf, get_pfpcontained(pfpdf, margin=10.0).rename(('slc','contained','10cm')))
     slcdf = multicol_add(slcdf, get_pfpcontained(pfpdf, margin=20.0).rename(('slc','contained','20cm')))
-    slcdf = multicol_add(slcdf, get_pfpcontained(pfpdf, margin=40.0).rename(('slc','contained','40cm')))
+    slcdf = multicol_add(slcdf, get_pfpcontained(pfpdf, margin=30.0).rename(('slc','contained','30cm')))
+    slcdf = multicol_add(slcdf, get_pfpcontained(pfpdf, margin=50.0).rename(('slc','contained','50cm')))
 
     pfpdf = pfpdf.drop('pfochar',axis=1,level=1)
     
@@ -163,18 +162,24 @@ def make_nueccdf(f):
     shower_scale=1.17
     slcdf = multicol_add(slcdf,(slcdf.primshw.shw.maxplane_energy*shower_scale).rename(("primshw","shw","reco_energy")))
     
-    # pre-selection cuts
-    slcdf = slcdf[slcdf.slc.is_clear_cosmic==0]
-    slcdf = slcdf[slcdf.slc.nu_score > 0.5]
-    slcdf = slcdf[InFV(df=slcdf.slc.vertex, det="SBND_nohighyz", inzback=0)]    
-    # slcdf = slcdf[slcdf.primshw.shw.reco_energy > 0.5]
-    
     return slcdf
 
 # ============================================================================
 # Data functions
 # ============================================================================
 
+def make_nueccdf(f):
+    slcdf = make_nueccdf_base(f)
+    slcdf = slcdf[slcdf.slc.is_clear_cosmic==0]
+    slcdf = slcdf[slcdf.slc.nu_score > 0.5]
+    slcdf = slcdf[InFV(df=slcdf.slc.vertex, det="SBND_nohighyz", inzback=0)]    
+    return slcdf
+
+def make_nueccdf_threshold(f):
+    slcdf = make_nueccdf(f)
+    slcdf = slcdf[slcdf.primshw.shw.reco_energy > 0.5]
+    return slcdf
+    
 def make_nueccdf_data(f):
     slcdf = make_nueccdf(f)
     # drop truth cols for data
@@ -236,12 +241,17 @@ def _merge_nueccdf_with_mc_truth(slcdf, f, include_weights=False, multisim_nuniv
 # MC functions (with truth matching)
 # ============================================================================
 
-def make_nueccdf_mc(f, include_weights=False, multisim_nuniv=100, slim=False, **kwargs):
-    """
-    Merge base selection with MC truth information.
-    """
+def make_nueccdf_base_mc(f):
+    slcdf = make_nueccdf_base(f)
+    return _merge_nueccdf_with_mc_truth(slcdf, f)
+
+def make_nueccdf_mc(f)
     slcdf = make_nueccdf(f)
-    return _merge_nueccdf_with_mc_truth(slcdf, f, include_weights=include_weights, multisim_nuniv=multisim_nuniv, slim=slim, **kwargs)
+    return _merge_nueccdf_with_mc_truth(slcdf, f)
+
+def make_nueccdf_threshold_mc(f):
+    slcdf = make_nueccdf_threshold(f)
+    return _merge_nueccdf_with_mc_truth(slcdf, f)
 
 # ============================================================================
 # Systematic weights helper
@@ -327,7 +337,7 @@ def make_nueccdf_mc_wgt(f, multisim_nuniv=100, slim=False, **kwargs):
     Base selection with MC truth and systematic weights.
     Weights are calculated for selected indices only to reduce overhead.
     """
-    df = make_nueccdf_mc(f, include_weights=False)
+    df = make_nueccdf_mc(f)
     return _add_weights_to_nueccdf(df, f, multisim_nuniv=multisim_nuniv, slim=slim, **kwargs)
 
 def make_nueccdf_mc_wgt_ar23(f, multisim_nuniv=100, slim=False, **kwargs):
@@ -335,5 +345,5 @@ def make_nueccdf_mc_wgt_ar23(f, multisim_nuniv=100, slim=False, **kwargs):
     Base selection with MC truth and systematic weights.
     Weights are calculated for selected indices only to reduce overhead.
     """
-    df = make_nueccdf_mc(f, include_weights=False)
+    df = make_nueccdf_mc(f)
     return _add_weights_to_nueccdf(df, f, multisim_nuniv=multisim_nuniv, slim=slim, ar23p=True,**kwargs)
