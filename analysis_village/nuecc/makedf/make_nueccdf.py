@@ -38,6 +38,27 @@ def get_pfpcontained(pfpdf, margin=0.0):
         shw_margin = (abs(pfpdf.pfp.shw.start.x) > margin) == (abs(pfpdf.pfp.shw.end.x) > margin)
         return (trk_contained & shw_contained & trk_margin & shw_margin).groupby(level=[0, 1]).all()
 
+def get_slcminx(pfpdf):
+    # get minimum x position of all pfps in the slice as a proxy for distance to the TPC boundary
+    # but keep the sign to distinguish proximity to upstream vs downstream boundary
+    endpoints = np.array([
+        pfpdf.pfp.trk.start.x,
+        pfpdf.pfp.trk.end.x,
+        pfpdf.pfp.shw.start.x,
+        pfpdf.pfp.shw.end.x,
+    ])
+    endpoints = np.where(np.isnan(endpoints), np.inf, endpoints)  # treat NaNs as infinitely far from boundary
+    endpoints_abs = np.abs(endpoints)
+    min_abs_per_pfp = np.min(endpoints_abs, axis=0)
+    min_idx_per_pfp = np.argmin(endpoints_abs, axis=0)
+    min_signed_per_pfp = np.choose(min_idx_per_pfp, endpoints)
+    
+    min_signed_series = pd.Series(min_signed_per_pfp, index=pfpdf.index)
+    result = min_signed_series.groupby(level=[0,1]).apply(
+        lambda group: group.iloc[np.abs(group).argmin()]
+    )
+    return result
+
 # ============================================================================
 # Independent base functions
 # ============================================================================
@@ -129,7 +150,9 @@ def make_nueccdf_base(f):
     slcdf = multicol_add(slcdf, get_pfpcontained(pfpdf, margin=100.0).rename(('slc','contained','100cm')))
     slcdf = multicol_add(slcdf, get_pfpcontained(pfpdf, margin=125.0).rename(('slc','contained','125cm')))
     slcdf = multicol_add(slcdf, get_pfpcontained(pfpdf, margin=150.0).rename(('slc','contained','150cm')))
-
+    
+    # get minimum abs x position of all pfps in the slice as a proxy for distance to the TPC boundary
+    slcdf = multicol_add(slcdf, get_slcminx(pfpdf).rename(('slc','min_pfp_x')))
 
     pfpdf = pfpdf.drop('pfochar',axis=1,level=1)
     
