@@ -6,37 +6,34 @@ from makedf.util import *
 # Helper functions
 # ============================================================================
 
-def get_pfpcontained(pfpdf, margin=0.0):
-    """
-    Compute pfpcontained flag for slices with optional distance margin.
+def slc_contained(pfpdf, slcdf, margin=0):
+    # ignore the 'neutrino' pfp
+    pfpdf = pfpdf[pfpdf.pfp.trk.producer!=4294967295]
 
-    Checks if all PFPs in a slice satisfy containment criteria. A PFP is
-    considered contained if both its track and shower don't cross the
-    specified boundary.
+    pfp_tpc0 = ((pfpdf.pfp.trk.start.x < -1*margin) & 
+                (pfpdf.pfp.trk.end.x   < -1*margin) & 
+                (pfpdf.pfp.shw.start.x < -1*margin) & 
+                (pfpdf.pfp.shw.end.x   < -1*margin) & 
+                (pfpdf.pfp.trk.start.x.notna()) &
+                (pfpdf.pfp.trk.end.x.notna()) &
+                (pfpdf.pfp.shw.start.x.notna()) &
+                (pfpdf.pfp.shw.end.x.notna()))
+    pfp_tpc1 = ((pfpdf.pfp.trk.start.x > margin) & 
+                (pfpdf.pfp.trk.end.x   > margin) & 
+                (pfpdf.pfp.shw.start.x > margin) & 
+                (pfpdf.pfp.shw.end.x   > margin) & 
+                (pfpdf.pfp.trk.start.x.notna()) &
+                (pfpdf.pfp.trk.end.x.notna()) &
+                (pfpdf.pfp.shw.start.x.notna()) &
+                (pfpdf.pfp.shw.end.x.notna()))
 
-    Parameters
-    ----------
-    pfpdf : pandas.DataFrame
-        PFP-level dataframe with MultiIndex [run, event, pfp]
-    margin : float, optional
-        Distance margin in cm from YZ=0 plane (default: 0.0).
-        E.g., margin=5 requires |x| > 5 for both start and end points.
-
-    Returns
-    -------
-    pandas.Series
-        Boolean series indexed by [run, event] indicating if all pfps
-        in the slice are contained
-    """
-
-    trk_contained = (pfpdf.pfp.trk.start.x > 0) == (pfpdf.pfp.trk.end.x > 0)
-    shw_contained = (pfpdf.pfp.shw.start.x > 0) == (pfpdf.pfp.shw.end.x > 0)
-    if margin == 0.0:
-        return (trk_contained & shw_contained).groupby(level=[0, 1]).all()
-    else:
-        trk_margin = (abs(pfpdf.pfp.trk.start.x) > margin) == (abs(pfpdf.pfp.trk.end.x) > margin)
-        shw_margin = (abs(pfpdf.pfp.shw.start.x) > margin) == (abs(pfpdf.pfp.shw.end.x) > margin)
-        return (trk_contained & shw_contained & trk_margin & shw_margin).groupby(level=[0, 1]).all()
+    slc_tpc1 = pfp_tpc1.groupby(level=[0,1]).all()
+    slc_tpc0 = pfp_tpc0.groupby(level=[0,1]).all()
+    slc_cont = slc_tpc1 | slc_tpc0
+    slcdf = multicol_add(slcdf, slc_cont.rename(("slc",'contained',f'margin_{margin}','tot')))
+    slcdf = multicol_add(slcdf, slc_tpc0.rename(("slc",'contained',f'margin_{margin}','tpc0')))
+    slcdf = multicol_add(slcdf, slc_tpc1.rename(("slc",'contained',f'margin_{margin}','tpc1')))
+    return slcdf
 
 def get_slcminx(pfpdf):
     # get minimum x position of all pfps in the slice as a proxy for distance to the TPC boundary
@@ -140,17 +137,15 @@ def make_nueccdf_base(f):
     slcdf = loadbranches(f["recTree"], slcbranches+barycenterFMbranches)
     slcdf = slcdf.rec
 
-    slcdf = multicol_add(slcdf, get_pfpcontained(pfpdf, margin=0.0).rename(('slc','contained','0cm')))
-    slcdf = multicol_add(slcdf, get_pfpcontained(pfpdf, margin=5.0).rename(('slc','contained','5cm')))
-    slcdf = multicol_add(slcdf, get_pfpcontained(pfpdf, margin=10.0).rename(('slc','contained','10cm')))
-    slcdf = multicol_add(slcdf, get_pfpcontained(pfpdf, margin=20.0).rename(('slc','contained','20cm')))
-    slcdf = multicol_add(slcdf, get_pfpcontained(pfpdf, margin=30.0).rename(('slc','contained','30cm')))
-    slcdf = multicol_add(slcdf, get_pfpcontained(pfpdf, margin=50.0).rename(('slc','contained','50cm')))
-    slcdf = multicol_add(slcdf, get_pfpcontained(pfpdf, margin=75.0).rename(('slc','contained','75cm')))
-    slcdf = multicol_add(slcdf, get_pfpcontained(pfpdf, margin=100.0).rename(('slc','contained','100cm')))
-    slcdf = multicol_add(slcdf, get_pfpcontained(pfpdf, margin=125.0).rename(('slc','contained','125cm')))
-    slcdf = multicol_add(slcdf, get_pfpcontained(pfpdf, margin=150.0).rename(('slc','contained','150cm')))
-    
+    slcdf = slc_contained(pfpdf, slcdf, margin=0)
+    slcdf = slc_contained(pfpdf, slcdf, margin=5)
+    slcdf = slc_contained(pfpdf, slcdf, margin=10)
+    slcdf = slc_contained(pfpdf, slcdf, margin=20)
+    slcdf = slc_contained(pfpdf, slcdf, margin=30)
+    slcdf = slc_contained(pfpdf, slcdf, margin=50)
+    slcdf = slc_contained(pfpdf, slcdf, margin=75)
+    slcdf = slc_contained(pfpdf, slcdf, margin=100)
+
     # get minimum abs x position of all pfps in the slice as a proxy for distance to the TPC boundary
     slcdf = multicol_add(slcdf, get_slcminx(pfpdf).rename(('slc','min_pfp_x')))
 
