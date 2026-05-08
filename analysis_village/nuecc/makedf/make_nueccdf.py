@@ -6,6 +6,19 @@ from makedf.util import *
 # Helper functions
 # ============================================================================
 
+def NotInHigh(df): 
+    fail = (df.z > 250) & (df.y > 100.)
+    return ~fail
+
+def InFV_pfp(df):
+    xmax = 195.
+    zmin = 5.
+    zmax = 490.
+    ymax_highz = 100.
+    pass_xz = (np.abs(df.x) < xmax) & (df.z > zmin) & (df.z < zmax)
+    pass_y = ((df.z < 250) & (np.abs(df.y) < 195.)) | ((df.z > 250) & (df.y > -195.) & (df.y < ymax_highz))
+    return pass_xz & pass_y
+
 def slc_contained(pfpdf, slcdf, margin=0):
     # ignore the 'neutrino' pfp
     pfpdf = pfpdf[pfpdf.pfp.trk.producer!=4294967295]
@@ -145,6 +158,11 @@ def make_nueccdf_base(f):
     slcdf = slc_contained(pfpdf, slcdf, margin=50)
     slcdf = slc_contained(pfpdf, slcdf, margin=75)
     slcdf = slc_contained(pfpdf, slcdf, margin=100)
+    
+    pfp_NotInHigh = NotInHigh(pfpdf.pfp.trk.start) & NotInHigh(pfpdf.pfp.trk.end) & NotInHigh(pfpdf.pfp.shw.start) & NotInHigh(pfpdf.pfp.shw.end)
+    slcdf = multicol_add(slcdf, pfp_NotInHigh.groupby(level=[0,1]).all().rename(('slc','pfp_notinhigh')))
+    pfp_InFV = InFV_pfp(pfpdf.pfp.trk.start) & InFV_pfp(pfpdf.pfp.trk.end) & InFV_pfp(pfpdf.pfp.shw.start) & InFV_pfp(pfpdf.pfp.shw.end)
+    slcdf = multicol_add(slcdf, pfp_InFV.groupby(level=[0,1]).all().rename(('slc','pfp_infv')))
 
     # get minimum abs x position of all pfps in the slice as a proxy for distance to the TPC boundary
     slcdf = multicol_add(slcdf, get_slcminx(pfpdf).rename(('slc','min_pfp_x')))
