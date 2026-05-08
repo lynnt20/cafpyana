@@ -7,6 +7,8 @@ import re
 import sys
 import warnings
 
+import math
+
 import pandas as pd
 import tables
 from tqdm import tqdm
@@ -38,12 +40,12 @@ def get_keys(file):
     return sorted(base_keys)
 
 
-def concat_hdf_files(directory, keys2load, output_dir=None, pattern="*.df", n_max_concat=None):
+def concat_hdf_files(directory, keys2load, output_dir=None, pattern="*.df", n_max_concat=None, split_size=1.0):
     """Concatenate DataFrames across multiple HDF5 files and write to a new file.
 
-    Output preserves the split-file structure (keys stored as {key}_0, plus a
-    split key with n_split=1) so it is readable by load_dfs. Each row gets a
-    file_idx column indicating which source file it came from.
+    Output preserves the split-file structure (keys stored as {key}_N, plus a
+    split key with n_split) so it is readable by load_dfs. Each row gets a
+    file_idx index level indicating which source file it came from.
     """
     all_files = sorted(glob.glob(os.path.join(directory, pattern)))
     if not all_files:
@@ -71,12 +73,21 @@ def concat_hdf_files(directory, keys2load, output_dir=None, pattern="*.df", n_ma
             df = df.set_index("file_idx", append=True)
             merged[key].append(df)
 
+    # concatenate all data and determine number of splits from total memory
+    full = {key: pd.concat(dfs, ignore_index=False) for key, dfs in merged.items()}
+    total_gb = sum(df.memory_usage(deep=True).sum() for df in full.values()) / (1024 ** 3)
+    n_splits = max(1, math.ceil(total_gb / split_size))
+
     with pd.HDFStore(out_path, mode='w') as store:
         for key in keys2load:
-            store.put(f"{key}_0", pd.concat(merged[key], ignore_index=False), format="fixed")
-        store.put("split", pd.DataFrame({"n_split": [1]}), format="fixed")
+            n_rows = len(full[key])
+            chunk_size = math.ceil(n_rows / n_splits)
+            for i in range(n_splits):
+                chunk = full[key].iloc[i * chunk_size:(i + 1) * chunk_size]
+                store.put(f"{key}_{i}", chunk, format="fixed")
+        store.put("split", pd.DataFrame({"n_split": [n_splits]}), format="fixed")
 
-    print(f"Wrote {out_path}")
+    print(f"Wrote {out_path} ({n_splits} split(s))")
     return out_path
 
 
@@ -110,6 +121,12 @@ def main():
         default=None,
         help="Maximum number of splits to load per file. Loads all splits by default.",
     )
+    parser.add_argument(
+        "--split", "-s",
+        type=float,
+        default=1.0,
+        help="Target split size in GB for the output file.",
+    )
 
     args = parser.parse_args()
 
@@ -128,6 +145,7 @@ def main():
         output_dir=args.output_dir,
         pattern=args.pattern,
         n_max_concat=args.n_max_concat,
+        split_size=args.split,
     )
 
 
