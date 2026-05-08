@@ -76,6 +76,8 @@ def get_slcminx(pfpdf):
 def make_mcnulite_df_nuecc(f):
     rse_df = make_hdrdf(f)
     nu_df = loadbranches(f["recTree"], ["rec.mc.nu.E","rec.mc.nu.pdg"]).rec.mc.nu
+    # keep only the maximum energy
+    nu_df = nu_df.sort_values("E").groupby(level=[0,1]).nth(-1)
     names = nu_df.index.names
     df = nu_df.reset_index().merge(rse_df.reset_index(),on='entry').set_index(names)
     return df 
