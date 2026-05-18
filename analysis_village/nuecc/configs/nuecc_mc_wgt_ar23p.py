@@ -1,4 +1,5 @@
 from analysis_village.nuecc.makedf.make_nueccdf import * 
+
 GRID_PARAMS = {
     "memory": "6GB",
     "cpu":    7,
@@ -6,9 +7,13 @@ GRID_PARAMS = {
     "lifetime": "1h",
 }
   
-DFS =   [make_hdrdf,
+DFS =   [make_mcnudf_nuecc_sig
+         make_hdrdf,
          make_nueccdf_mc_wgt_ar23,
+         make_mcnulite_df_nuecc
          ]
 
-NAMES = ["hdr", 
-         "nuecc"]
+NAMES = ["mcnuecc",
+         "hdr",
+         "nuecc",
+         "nulite"]

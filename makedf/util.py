@@ -75,6 +75,14 @@ def InFV(df, inzback, inx=10, iny=10, inzfront=10, det="ICARUS"):
         pass_y = ((df.z < 250) & (np.abs(df.y) < 190.)) | ((df.z > 250) & (df.y > -190.) & (df.y < ymax_highz))
         return pass_xz & pass_y
 
+    elif det == "SBND_nu26":
+        x_region  = (abs(df.x) > 5) & (abs(df.x) < 190)
+        z_region1 = (df.z > 10)  & (df.z < 250) & (df.y > -190) & (df.y < 190)
+        z_region2 = (df.z > 250) & (df.z < 450) & (df.y > -190) & (df.y < 100) & (df.x < 0)
+        z_region3 = (df.z > 250) & (df.z < 450) & (df.y > -190) & (df.y < 190) & (df.x > 0)
+        contained = x_region & (z_region1 | z_region2 | z_region3)
+        return contained
+
     else:
         raise NameError("DETECTOR not valid, should be SBND or ICARUS")
 

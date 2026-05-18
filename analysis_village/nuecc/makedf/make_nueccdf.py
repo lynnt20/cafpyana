@@ -7,7 +7,7 @@ from makedf.util import *
 # ============================================================================
 
 def NotInHigh(df): 
-    fail = (df.z > 250) & (df.y > 100.)
+    fail = (df.z > 250) & (df.y > 100.) & (df.x < 0)
     return ~fail
 
 def InFV_pfp(df):
@@ -114,7 +114,7 @@ def make_mcnudf_nuecc_sigwgt(f, int_only=True,**kwargs):
     mcdf = make_mcnudf_nuecc(f)
     mcdf["ind"] = mcdf.index.get_level_values(1)
     
-    signal_mask = ((InFV(df=mcdf.position, inzback=0, det="SBND_nohighyz")) &
+    signal_mask = ((InFV(df=mcdf.position, inzback=0, det="SBND_nu26")) &
                    (mcdf.iscc==1) &
                    (abs(mcdf.pdg)==12) &
                    (abs(mcdf.e.pdg)==11) &
@@ -224,7 +224,7 @@ def make_nueccdf(f):
     slcdf = make_nueccdf_base(f)
     slcdf = slcdf[slcdf.slc.is_clear_cosmic==0]
     slcdf = slcdf[slcdf.slc.nu_score > 0.5]
-    slcdf = slcdf[InFV(df=slcdf.slc.vertex, det="SBND_nohighyz", inzback=0)]    
+    slcdf = slcdf[InFV(df=slcdf.slc.vertex, det="SBND_nu26", inzback=0)]    
     return slcdf
 
 def make_nueccdf_threshold(f):
