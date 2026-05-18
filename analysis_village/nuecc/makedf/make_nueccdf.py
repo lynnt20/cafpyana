@@ -101,6 +101,15 @@ def make_mcnudf_nuecc(f,**args):
     
     return mcdf
 
+def make_mcnudf_nuecc_sig(f):
+    mcdf = make_mcnudf_nuecc(f)
+    signal_mask = ((InAV(mcdf.position, det="SBND")) &
+                   (mcdf.iscc==1) &
+                   (abs(mcdf.pdg)==12) &
+                   (abs(mcdf.e.pdg)==11) )
+    mcdf = mcdf[signal_mask]
+    return mcdf
+
 def make_mcnudf_nuecc_sigwgt(f, int_only=True,**kwargs):
     mcdf = make_mcnudf_nuecc(f)
     mcdf["ind"] = mcdf.index.get_level_values(1)
