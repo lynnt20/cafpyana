@@ -7,7 +7,7 @@ GRID_PARAMS = {
     "lifetime": "1h",
 }
   
-DFS =   [make_mcnudf_nuecc_sig
+DFS =   [make_mcnudf_nuecc_sig,
          make_hdrdf,
          make_nueccdf_mc_wgt_ar23,
          make_mcnulite_df_nuecc
