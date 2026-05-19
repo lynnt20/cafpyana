@@ -7,5 +7,5 @@ GRID_PARAMS = {
     "lifetime": "1h",
 }
 
-DFS =   [make_nueccdf_base_mc, make_hdrdf, make_potdf_bnb]
-NAMES = ["nuecc", "hdr", "pot"]
+DFS =   [make_mcnudf_nuecc_sig, make_nueccdf_base_mc, make_hdrdf, make_potdf_bnb]
+NAMES = ["mcnuecc","nuecc", "hdr", "pot"]
