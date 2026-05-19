@@ -216,10 +216,6 @@ def make_nueccdf_base(f):
     
     return slcdf
 
-# ============================================================================
-# Data functions
-# ============================================================================
-
 def make_nueccdf(f):
     slcdf = make_nueccdf_base(f)
     slcdf = slcdf[slcdf.slc.is_clear_cosmic==0]
@@ -231,23 +227,32 @@ def make_nueccdf_threshold(f):
     slcdf = make_nueccdf(f)
     slcdf = slcdf[slcdf.primshw.shw.reco_energy > 0.5]
     return slcdf
-    
-def make_nueccdf_data(f):
-    slcdf = make_nueccdf(f)
-    # drop truth cols for data
-    slcdf = slcdf.drop('tmatch', axis=1,level=1) # slc level
-    slcdf = slcdf.drop('truth',  axis=1,level=2) # pfp level
-    
-    ## keep the only relevant column (for now)
+
+# ============================================================================
+# Data functions
+# ============================================================================
+
+def _prepare_nueccdf_data(slcdf, f):
+    slcdf = slcdf.drop('tmatch', axis=1, level=1)  # slc level
+    slcdf = slcdf.drop('truth',  axis=1, level=2)  # pfp level
+
     framedf = make_framedf(f)[['frameApplyAtCaf']]
-    
-    df = multicol_merge(slcdf.reset_index(), 
+    df = multicol_merge(slcdf.reset_index(),
                         framedf.reset_index(),
                         left_on=[('entry', '', '', '', '', '')],
-                        right_on=[('entry', '', '', '', '', '')], 
+                        right_on=[('entry', '', '', '', '', '')],
                         how="left")
     df = df.set_index(slcdf.index.names, verify_integrity=True)
     return df
+
+def make_nueccdf_base_data(f):
+    return _prepare_nueccdf_data(make_nueccdf_base(f), f)
+
+def make_nueccdf_data(f):
+    return _prepare_nueccdf_data(make_nueccdf(f), f)
+
+def make_nueccdf_threshold_data(f):
+    return _prepare_nueccdf_data(make_nueccdf_threshold(f), f)
 
 # ============================================================================
 # MC truth merge helper
