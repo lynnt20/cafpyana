@@ -7,7 +7,7 @@ GRID_PARAMS = {
 }
 
 DFS =   [make_hdrdf,
-         make_nueccdf_mc_wgt,
+         make_nueccdf_threshold_mc_wgt,
          make_mcnudf_nuecc_sigwgt,
          ]
 
