@@ -10,11 +10,10 @@ DFS =   [make_hdrdf,
          make_nueccdf_threshold_mc_wgt,
          make_mcnudf_nuecc_sigwgt,
          make_mcnulite_df_nuecc
-
          ]
 
 NAMES = ["hdr", 
          "nuecc",
-         "mcnuecc"
+         "mcnuecc",
          "nulite"
          ]
