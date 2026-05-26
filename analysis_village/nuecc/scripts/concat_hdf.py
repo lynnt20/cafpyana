@@ -7,8 +7,6 @@ import re
 import sys
 import warnings
 
-import math
-
 import pandas as pd
 import tables
 from tqdm import tqdm
@@ -46,6 +44,11 @@ def concat_hdf_files(directory, keys2load, output_dir=None, pattern="*.df", n_ma
     Output preserves the split-file structure (keys stored as {key}_N, plus a
     split key with n_split) so it is readable by load_dfs. Each row gets a
     file_idx index level indicating which source file it came from.
+
+    Files are streamed one at a time and flushed to a new output split once
+    the accumulated buffer reaches split_size GB. All keys are always flushed
+    together, so split N of any key covers exactly the same source files,
+    guaranteeing alignment across keys.
     """
     all_files = sorted(glob.glob(os.path.join(directory, pattern)))
     if not all_files:
@@ -61,33 +64,50 @@ def concat_hdf_files(directory, keys2load, output_dir=None, pattern="*.df", n_ma
     if not files:
         raise FileNotFoundError(f"No source files found after excluding output file {out_path}")
 
-    merged = {key: [] for key in keys2load}
+    skipped = []
+    buffers = {key: [] for key in keys2load}
+    buffer_gb = 0.0
+    n_out_splits = 0
 
-    for file_idx, file in enumerate(tqdm(files, desc="Concatenating files")):
-        n_splits = get_n_split(file)
-        n_load = n_splits if n_max_concat is None else min(n_max_concat, n_splits)
-        file_dfs = load_dfs(file, keys2load, n_max_concat=n_load)
+    def flush(store):
+        nonlocal n_out_splits, buffer_gb, buffers
         for key in keys2load:
-            df = file_dfs[key].copy()
-            df["file_idx"] = file_idx
-            df = df.set_index("file_idx", append=True)
-            merged[key].append(df)
-
-    # concatenate all data and determine number of splits from total memory
-    full = {key: pd.concat(dfs, ignore_index=False) for key, dfs in merged.items()}
-    total_gb = sum(df.memory_usage(deep=True).sum() for df in full.values()) / (1024 ** 3)
-    n_splits = max(1, math.ceil(total_gb / split_size))
+            chunk = pd.concat(buffers[key], ignore_index=False)
+            store.put(f"{key}_{n_out_splits}", chunk, format="fixed")
+        n_out_splits += 1
+        buffers = {key: [] for key in keys2load}
+        buffer_gb = 0.0
 
     with pd.HDFStore(out_path, mode='w') as store:
-        for key in keys2load:
-            n_rows = len(full[key])
-            chunk_size = math.ceil(n_rows / n_splits)
-            for i in range(n_splits):
-                chunk = full[key].iloc[i * chunk_size:(i + 1) * chunk_size]
-                store.put(f"{key}_{i}", chunk, format="fixed")
-        store.put("split", pd.DataFrame({"n_split": [n_splits]}), format="fixed")
+        for file_idx, file in enumerate(tqdm(files, desc="Concatenating files")):
+            try:
+                n_splits = get_n_split(file)
+                n_load = n_splits if n_max_concat is None else min(n_max_concat, n_splits)
+                file_dfs = load_dfs(file, keys2load, n_max_concat=n_load)
+            except Exception as e:
+                print(f"\nWarning: skipping {os.path.basename(file)} ({e})", file=sys.stderr)
+                skipped.append(file)
+                continue
 
-    print(f"Wrote {out_path} ({n_splits} split(s))")
+            for key in keys2load:
+                df = file_dfs[key].copy()
+                df["file_idx"] = file_idx
+                df = df.set_index("file_idx", append=True)
+                buffer_gb += df.memory_usage(deep=True).sum() / (1024 ** 3)
+                buffers[key].append(df)
+
+            if buffer_gb >= split_size:
+                flush(store)
+
+        if any(buffers[key] for key in keys2load):
+            flush(store)
+
+        store.put("split", pd.DataFrame({"n_split": [n_out_splits]}), format="fixed")
+
+    if skipped:
+        print(f"Skipped {len(skipped)} file(s): {[os.path.basename(f) for f in skipped]}", file=sys.stderr)
+
+    print(f"Wrote {out_path} ({n_out_splits} split(s))")
     return out_path
 
 
@@ -127,7 +147,6 @@ def main():
         default=1.0,
         help="Target split size in GB for the output file.",
     )
-
     args = parser.parse_args()
 
     keys2load = args.keys
