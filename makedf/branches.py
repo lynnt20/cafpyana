@@ -57,6 +57,8 @@ numipotbranches = [
 bnbpotbranches = [
     "rec.hdr.bnbinfo.TOR860",
     "rec.hdr.bnbinfo.TOR875",
+    "rec.hdr.bnbinfo.FOM",
+    "rec.hdr.bnbinfo.THCURR",
 ]
 
 sbndframebranches = [

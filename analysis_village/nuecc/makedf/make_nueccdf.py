@@ -254,6 +254,14 @@ def make_nueccdf_data(f):
 def make_nueccdf_threshold_data(f):
     return _prepare_nueccdf_data(make_nueccdf_threshold(f), f)
 
+def make_nuecc_df_data_sideband(f):
+    slcdf = make_nueccdf_threshold(f)
+    slcdf = slcdf[slcdf.primshw.shw.conversion_gap > 2]
+    slcdf = slcdf[(slcdf.primshw.shw.bestplane_dEdx>3) &
+                  (slcdf.primshw.shw.bestplane_dEdx<6)]
+    return _prepare_nueccdf_data(slcdf, f)
+    
+
 # ============================================================================
 # MC truth merge helper
 # ============================================================================
