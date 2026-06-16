@@ -385,7 +385,7 @@ def make_nueccdf_threshold_mc(f):
 # Systematic weights helper
 # ============================================================================
 
-def _add_weights_to_nueccdf(df, f, multisim_nuniv=100, slim=False, wgt_types=["bnb", "genie","g4"],ar23p=False):
+def _add_weights_to_nueccdf(df, f, multisim_nuniv=100, slim=False, wgt_types=["bnb", "genie", "g4"], ar23p=False):
     """
     Helper function to add systematic weights to a neutrino CC DataFrame.
     
@@ -443,6 +443,33 @@ def _add_weights_to_nueccdf(df, f, multisim_nuniv=100, slim=False, wgt_types=["b
         if g4wgtdf is not None and g4wgtdf.shape[1] > 0:
             wgt_dfs.append(g4wgtdf)
     
+    if "fsi" in wgt_types:
+        fsiwgtdf = make_fsi_weight_df(f)
+        if fsiwgtdf is not None and not fsiwgtdf.empty:
+            # Load genie_evtrec_idx: maps (entry, nu_subentry) → GenieEvtRecTree entry
+            genie_idx_raw = loadbranches(f["recTree"], ["rec.mc.nu.genie_evtrec_idx"])
+            while genie_idx_raw.columns.nlevels > 1:
+                genie_idx_raw.columns = genie_idx_raw.columns.droplevel(0)
+            genie_idx_ser = genie_idx_raw.iloc[:, 0]  # Series: (entry, nu_sub) → genie_entry
+
+            # Build (entry, nu_subentry) pairs for selected neutrinos
+            # nu_indices has values=nu_subentry, index level 0 = CAF entry
+            entry_vals  = nu_indices.index.get_level_values(0)
+            nu_sub_vals = nu_indices.values
+            lookup_keys = pd.MultiIndex.from_arrays([entry_vals, nu_sub_vals])
+
+            genie_entries = genie_idx_ser.reindex(lookup_keys).fillna(-1).astype(int).values
+
+            ha2025  = fsiwgtdf[("fsi", "hA2025",  "")].reindex(genie_entries).fillna(1.0).values
+            ha2025c = fsiwgtdf[("fsi", "hA2025c", "")].reindex(genie_entries).fillna(1.0).values
+
+            fsi_aligned = pd.DataFrame({
+                ("fsi", "hA2025",  ""): ha2025,
+                ("fsi", "hA2025c", ""): ha2025c,
+            }, index=nu_indices.index)
+            fsi_aligned.columns = pd.MultiIndex.from_tuples(fsi_aligned.columns)
+            wgt_dfs.append(fsi_aligned)
+
     if wgt_dfs:
         wgtdf = pd.concat(wgt_dfs, axis=1)
         del wgt_dfs  # free intermediate list
@@ -453,7 +480,7 @@ def _add_weights_to_nueccdf(df, f, multisim_nuniv=100, slim=False, wgt_types=["b
         )
         df = multicol_concat(df, wgtdf)
         del wgtdf
-    
+
     return df
 
 # ============================================================================
@@ -475,6 +502,12 @@ def make_nueccdf_mc_wgt_ar23(f, multisim_nuniv=100, slim=False, **kwargs):
     """
     df = make_nueccdf_mc(f)
     return _add_weights_to_nueccdf(df, f, multisim_nuniv=multisim_nuniv, slim=slim, ar23p=True,**kwargs)
+
+def make_nueccdf_mc_wgt_fsi(f, multisim_nuniv=100, slim=False, **kwargs):
+    """Base selection with MC truth, systematic weights, and hA2025 FSI reweight."""
+    df = make_nueccdf_mc(f)
+    return _add_weights_to_nueccdf(df, f, multisim_nuniv=multisim_nuniv, slim=slim,
+                                   wgt_types=["bnb", "genie", "g4", "fsi"], **kwargs)
 
 def make_nueccdf_threshold_mc_wgt(f, multisim_nuniv=100, slim=False, **kwargs):
     df = make_nueccdf_threshold_mc(f)

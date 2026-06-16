@@ -125,11 +125,12 @@ def make_geniedf(f):
     if "GenieEvtRecTree" not in f:
         return pd.DataFrame([])
 
-    # shape = n of particles in genie 
+    # shape = n of particles in genie
     genie_particle_branches = [
         "GenieEvtRec.StdHepPdg",
         "GenieEvtRec.StdHepStatus",
         "GenieEvtRec.StdHepFm",
+        "GenieEvtRec.StdHepRescat",
     ]
     # shape = 1 (per event)
     genie_event_branches = [
@@ -156,6 +157,192 @@ def make_geniedf(f):
     df = df.reset_index().set_index('entry')
     df = df.rename(columns={'subentry': 'pindex'},level=0)
     return df
+
+def validate_genie_mctruth_alignment(f, n_sample=None, rtol=1e-3):
+    """Cross-check that rec.mc.nu truth info aligns with GenieEvtRecTree via genie_evtrec_idx.
+
+    Three checks per matched neutrino:
+      1. Neutrino energy: rec.mc.nu.E vs. the initial-state neutrino E in StdHep (status 0).
+      2. Neutrino PDG:    rec.mc.nu.pdg vs. StdHep initial-state neutrino PDG.
+      3. Final-state particle counts: npi, npi0, np from mc.nu.prim vs. StdHep status-1 counts.
+
+    Parameters
+    ----------
+    f : uproot file handle
+    n_sample : int or None
+        If set, check only this many neutrino interactions (randomly sampled). None = all.
+    rtol : float
+        Relative tolerance for energy comparison (default 0.1%).
+
+    Returns
+    -------
+    dict with keys 'n_checked', 'energy_ok_frac', 'pdg_ok_frac',
+    'npi_ok_frac', 'npi0_ok_frac', 'np_ok_frac', and 'failures' (list of dicts).
+    """
+    if "GenieEvtRecTree" not in f:
+        print("validate_genie_mctruth_alignment: no GenieEvtRecTree in file, skipping.")
+        return {}
+
+    geniedf = make_geniedf(f)
+    if geniedf.empty:
+        return {}
+
+    # Flatten geniedf columns for easy access
+    gdf = geniedf.copy()
+    gdf.columns = ["_".join(str(s) for s in c).strip("_") for c in gdf.columns]
+
+    # Load mc.nu truth: energy, pdg, genie_evtrec_idx
+    mc_raw = loadbranches(f["recTree"], [
+        "rec.mc.nu.E", "rec.mc.nu.pdg", "rec.mc.nu.genie_evtrec_idx",
+    ])
+    while mc_raw.columns.nlevels > 1:
+        mc_raw.columns = mc_raw.columns.droplevel(0)
+    mc_raw.index.names = ["entry", "nu_sub"]
+
+    # Load only pdg for primary particle counts (loading all mcprimbranches would
+    # cause mixed-depth column padding, leaving the pdg column named "")
+    mcprim_pdg = loadbranches(f["recTree"], ["rec.mc.nu.prim.pdg"])
+    while mcprim_pdg.columns.nlevels > 1:
+        mcprim_pdg.columns = mcprim_pdg.columns.droplevel(0)
+    mcprim_pdg.index.names = ["entry", "nu_sub", "prim_sub"]
+    pdg_col = mcprim_pdg.iloc[:, 0]
+
+    npi_true  = (np.abs(pdg_col) == 211).groupby(level=[0, 1]).sum()
+    npi0_true = (np.abs(pdg_col) == 111).groupby(level=[0, 1]).sum()
+    np_true   = (pdg_col == 2212).groupby(level=[0, 1]).sum()
+
+    mc_raw["npi"]  = npi_true
+    mc_raw["npi0"] = npi0_true
+    mc_raw["np"]   = np_true
+    mc_raw = mc_raw.fillna(0)
+
+    rows = mc_raw.reset_index()
+    if n_sample is not None and n_sample < len(rows):
+        rows = rows.sample(n_sample, random_state=42)
+
+    results = {"n_checked": 0, "energy_ok": 0, "pdg_ok": 0,
+               "npi_ok": 0, "npi0_ok": 0, "np_ok": 0, "failures": []}
+
+    for _, row in rows.iterrows():
+        genie_entry = int(row["genie_evtrec_idx"])
+        if genie_entry not in gdf.index.get_level_values(0):
+            continue
+
+        event = gdf.loc[genie_entry]
+        results["n_checked"] += 1
+
+        # --- Check 1 & 2: initial-state neutrino (status 0) ---
+        init = event[event["GenieEvtRec_StdHepStatus"] == 0]
+        init_nu = init[np.abs(init["GenieEvtRec_StdHepPdg"]).isin([12, 14, 16, -12, -14, -16])]
+
+        energy_ok = pdg_ok = False
+        if len(init_nu) > 0:
+            genie_E   = float(init_nu["GenieEvtRec_StdHepP4_E"].iloc[0])
+            genie_pdg = int(init_nu["GenieEvtRec_StdHepPdg"].iloc[0])
+            energy_ok = abs(genie_E - row["E"]) <= rtol * max(abs(row["E"]), 1e-6)
+            pdg_ok    = (genie_pdg == int(row["pdg"]))
+
+        if energy_ok: results["energy_ok"] += 1
+        if pdg_ok:    results["pdg_ok"]    += 1
+
+        # --- Check 3: final-state stable particle counts (status 1) ---
+        fs = event[event["GenieEvtRec_StdHepStatus"] == 1]
+        genie_npi  = int((np.abs(fs["GenieEvtRec_StdHepPdg"]) == 211).sum())
+        genie_npi0 = int((np.abs(fs["GenieEvtRec_StdHepPdg"]) == 111).sum())
+        genie_np   = int((fs["GenieEvtRec_StdHepPdg"] == 2212).sum())
+
+        npi_ok  = genie_npi  == int(row["npi"])
+        npi0_ok = genie_npi0 == int(row["npi0"])
+        np_ok   = genie_np   == int(row["np"])
+
+        if npi_ok:  results["npi_ok"]  += 1
+        if npi0_ok: results["npi0_ok"] += 1
+        if np_ok:   results["np_ok"]   += 1
+
+        if not all([energy_ok, pdg_ok, npi_ok, npi0_ok, np_ok]):
+            results["failures"].append({
+                "genie_entry": genie_entry,
+                "mc_E": row["E"],   "genie_E": genie_E if len(init_nu) > 0 else None,
+                "mc_pdg": row["pdg"], "genie_pdg": genie_pdg if len(init_nu) > 0 else None,
+                "mc_npi": row["npi"],  "genie_npi": genie_npi,
+                "mc_npi0": row["npi0"],"genie_npi0": genie_npi0,
+                "mc_np": row["np"],   "genie_np": genie_np,
+            })
+
+    n = results["n_checked"]
+    if n == 0:
+        print("validate_genie_mctruth_alignment: no events checked.")
+        return results
+
+    def frac(k): return results[k] / n
+    print(f"validate_genie_mctruth_alignment: checked {n} neutrino interactions")
+    print(f"  energy match:    {frac('energy_ok'):.1%}  (rtol={rtol})")
+    print(f"  PDG match:       {frac('pdg_ok'):.1%}")
+    print(f"  npi match:       {frac('npi_ok'):.1%}")
+    print(f"  npi0 match:      {frac('npi0_ok'):.1%}")
+    print(f"  np match:        {frac('np_ok'):.1%}")
+    if results["failures"]:
+        print(f"  {len(results['failures'])} failures (first shown):")
+        print(f"    {results['failures'][0]}")
+
+    for k in ["energy_ok", "pdg_ok", "npi_ok", "npi0_ok", "np_ok"]:
+        results[k + "_frac"] = frac(k)
+
+    return results
+
+
+def make_fsi_weight_df(f, validate=True, validate_n_sample=200):
+    """Compute per-event hA2025 and hA2025c FSI reweights from the GenieEvtRecTree.
+
+    Returns a DataFrame indexed by GenieEvtRecTree entry with columns
+    ('fsi', 'hA2025', '') and ('fsi', 'hA2025c', '').  Link to the analysis
+    dataframe via rec.mc.nu.genie_evtrec_idx -> GenieEvtRecTree entry.
+
+    Parameters
+    ----------
+    validate : bool
+        Run validate_genie_mctruth_alignment before computing weights (default True).
+    validate_n_sample : int
+        Number of interactions to sample for validation (default 200).
+    """
+    from .pion_fsi_reweighting import compute_pion_fsi_weights_from_arrays
+
+    if validate:
+        validate_genie_mctruth_alignment(f, n_sample=validate_n_sample)
+
+    geniedf = make_geniedf(f)
+    if geniedf.empty:
+        return pd.DataFrame(columns=pd.MultiIndex.from_tuples([
+            ("fsi", "hA2025", ""), ("fsi", "hA2025c", "")]))
+
+    # Flatten column MultiIndex for easier access
+    gdf = geniedf.copy()
+    gdf.columns = ["_".join(str(s) for s in c).strip("_") for c in gdf.columns]
+
+    # Group by GenieEvtRecTree entry, collecting per-particle arrays
+    grp = gdf.groupby(level=0)
+    def _to_arr(col): return grp[col].apply(np.array)
+
+    pdg       = _to_arr("GenieEvtRec_StdHepPdg")
+    mother    = _to_arr("GenieEvtRec_StdHepFm")
+    rescatter = _to_arr("GenieEvtRec_StdHepRescat")
+    status    = _to_arr("GenieEvtRec_StdHepStatus")
+    E         = _to_arr("GenieEvtRec_StdHepP4_E")
+    px        = _to_arr("GenieEvtRec_StdHepP4_px")
+    py        = _to_arr("GenieEvtRec_StdHepP4_py")
+    pz        = _to_arr("GenieEvtRec_StdHepP4_pz")
+
+    w_ha2025, w_ha2025c = compute_pion_fsi_weights_from_arrays(
+        pdg.values, mother.values, rescatter.values, status.values,
+        E.values, px.values, py.values, pz.values,
+    )
+
+    wgt = pd.DataFrame({
+        ("fsi", "hA2025",  ""): w_ha2025,
+        ("fsi", "hA2025c", ""): w_ha2025c,
+    }, index=pdg.index)
+    wgt.columns = pd.MultiIndex.from_tuples(wgt.columns)
+    return wgt
 
 def make_mchdf(f, include_weights=False):
     mcdf = loadbranches(f["recTree"], mchbranches).rec.mc.prtl
