@@ -158,6 +158,27 @@ def make_nueccdf_base(f):
     
     pfpdf = make_pfpdf(f)
 
+    # load chi2pid for planes 0 and 1 for muon/proton (plane 2 already in trkbranches),
+    # and all 3 planes for pion/kaon (not in trkbranches at all)
+    chi2_extra = loadbranches(f["recTree"], [
+        trkbranch + "chi2pid.0.chi2_muon",
+        trkbranch + "chi2pid.0.chi2_proton",
+        trkbranch + "chi2pid.0.chi2_pion",
+        trkbranch + "chi2pid.0.chi2_kaon",
+        trkbranch + "chi2pid.1.chi2_muon",
+        trkbranch + "chi2pid.1.chi2_proton",
+        trkbranch + "chi2pid.1.chi2_pion",
+        trkbranch + "chi2pid.1.chi2_kaon",
+        trkbranch + "chi2pid.2.chi2_pion",
+        trkbranch + "chi2pid.2.chi2_kaon",
+    ]).rec.slc.reco
+    pfpdf = multicol_concat(pfpdf, chi2_extra)
+
+    for _pid in ['muon', 'proton', 'pion', 'kaon']:
+        _planes = [pfpdf[('pfp','trk','chi2pid',f'I{p}',f'chi2_{_pid}','')] for p in range(3)]
+        _chi2_stack = pd.concat(_planes, axis=1)
+        pfpdf[('pfp','trk','chi2pid','avg',f'chi2_{_pid}','')] = _chi2_stack.where(_chi2_stack > 0).mean(axis=1)
+
     slcdf = loadbranches(f["recTree"], slcbranches+barycenterFMbranches)
     slcdf = slcdf.rec
 
@@ -180,9 +201,45 @@ def make_nueccdf_base(f):
 
     pfpdf = pfpdf.drop('pfochar',axis=1,level=1)
     
-    isshw = (pfpdf.pfp.trackScore < 0.5) & (pfpdf.pfp.shw.maxplane_energy > 0) & (pfpdf.pfp.trackScore > 0) & (pfpdf.pfp.shw.start.x == pfpdf.pfp.shw.start.x) 
+    isshw = (pfpdf.pfp.trackScore < 0.5) & (pfpdf.pfp.shw.maxplane_energy > 0) & (pfpdf.pfp.trackScore > 0) & (pfpdf.pfp.shw.start.x == pfpdf.pfp.shw.start.x)
     istrk = (pfpdf.pfp.trackScore >= 0.5) & (pfpdf.pfp.trk.len > 0) & (pfpdf.pfp.trk.start.x == pfpdf.pfp.trk.start.x)
-    isnon = ~(isshw | istrk) 
+    isnon = ~(isshw | istrk)
+
+    # min x of shower-type PFPs (signed, closest to TPC boundary)
+    shw_sub = pfpdf[isshw]
+    shw_xvals = np.array([shw_sub.pfp.shw.start.x.values, shw_sub.pfp.shw.end.x.values])
+    shw_xvals = np.where(np.isnan(shw_xvals), np.inf, shw_xvals)
+    shw_min_signed = np.choose(np.argmin(np.abs(shw_xvals), axis=0), shw_xvals)
+    shw_min_x = pd.Series(shw_min_signed, index=shw_sub.index).groupby(level=[0,1]).apply(
+        lambda g: g.iloc[np.abs(g).argmin()]
+    )
+    slcdf = multicol_add(slcdf, shw_min_x.rename(('slc', 'min_shw_x')))
+
+    # min x of track-type PFPs (signed, closest to TPC boundary)
+    trk_sub = pfpdf[istrk]
+    trk_xvals = np.array([trk_sub.pfp.trk.start.x.values, trk_sub.pfp.trk.end.x.values])
+    trk_xvals = np.where(np.isnan(trk_xvals), np.inf, trk_xvals)
+    trk_min_signed = np.choose(np.argmin(np.abs(trk_xvals), axis=0), trk_xvals)
+    trk_min_x = pd.Series(trk_min_signed, index=trk_sub.index).groupby(level=[0,1]).apply(
+        lambda g: g.iloc[np.abs(g).argmin()]
+    )
+    slcdf = multicol_add(slcdf, trk_min_x.rename(('slc', 'min_trk_x')))
+
+    # all classified (shw/trk) PFPs in the active volume
+    shw_inav = (InAV(pfpdf[isshw].pfp.shw.start, det=DETECTOR) &
+                InAV(pfpdf[isshw].pfp.shw.end,   det=DETECTOR))
+    trk_inav = (InAV(pfpdf[istrk].pfp.trk.start, det=DETECTOR) &
+                InAV(pfpdf[istrk].pfp.trk.end,   det=DETECTOR))
+    pfp_inav = pd.concat([shw_inav, trk_inav])
+    slcdf = multicol_add(slcdf, pfp_inav.groupby(level=[0,1]).all().rename(('slc', 'pfp_inav')))
+
+    # reco particle ID counts using plane-averaged chi2pid
+    chi2_mu_avg = pfpdf[('pfp','trk','chi2pid','avg','chi2_muon','')]
+    chi2_p_avg  = pfpdf[('pfp','trk','chi2pid','avg','chi2_proton','')]
+    is_reco_mu = istrk & (chi2_mu_avg > 0) & (chi2_mu_avg < 25) & (chi2_p_avg > 100)
+    is_reco_p  = istrk & ~is_reco_mu & (chi2_p_avg > 0) & (chi2_p_avg < 90)
+    slcdf = multicol_add(slcdf, is_reco_mu.groupby(level=[0,1]).sum().rename(('slc', 'n_reco_mu')))
+    slcdf = multicol_add(slcdf, is_reco_p.groupby(level=[0,1]).sum().rename(('slc', 'n_reco_p')))
 
     slcdf = multicol_add(slcdf, isshw.groupby(level=[0,1]).sum().rename(('slc','nshw')))
     slcdf = multicol_add(slcdf, istrk.groupby(level=[0,1]).sum().rename(('slc','ntrk')))
@@ -259,6 +316,12 @@ def make_nuecc_df_data_sideband(f):
     slcdf = slcdf[slcdf.primshw.shw.conversion_gap > 2]
     slcdf = slcdf[(slcdf.primshw.shw.bestplane_dEdx>3) &
                   (slcdf.primshw.shw.bestplane_dEdx<6)]
+    return _prepare_nueccdf_data(slcdf, f)
+
+def make_nuecc_df_data_sideband_debug(f):
+    slcdf = make_nueccdf_threshold(f)
+    slcdf = slcdf[slcdf.primshw.shw.reco_energy > 1.0]
+    slcdf = slcdf[(slcdf.primshw.shw.bestplane_dEdx>3)]
     return _prepare_nueccdf_data(slcdf, f)
     
 
