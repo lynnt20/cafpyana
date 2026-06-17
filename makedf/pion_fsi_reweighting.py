@@ -47,8 +47,8 @@ from scipy.interpolate import CloughTocher2DInterpolator as _CloughTocher
 
 # ── GENIE INTRANUKE data directory ───────────────────────────────────────────
 GENIE_INTRANUKE_DIR = os.path.join(
-    "/exp/sbnd/app/users/lynnt/generators/BuildEventGenerators/Generator",
-    "data", "evgen", "intranuke", "tot_xsec",
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "analysis_village", "fsi",
 )
 
 # ── Fate codes (INukeHadroFates2018.h / 2025.h, shared numbering) ────────────
