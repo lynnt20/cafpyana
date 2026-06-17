@@ -17,14 +17,24 @@ FV_SPLIT_TRUNCY_BOXES: list[dict] = [
     dict(x_range=(10.0, 190.0), y_range=(-190.0, 100.0), z_range=(250.0, 450.0)),
 ]
 
+# + truncate highYZ on East (x<0) only; West (x>0) keeps full y at high z
+FV_SPLIT_TRUNCY_EAST_BOXES: list[dict] = [
+    dict(x_range=(-190.0, -10.0), y_range=(-190.0, 190.0), z_range=(10.0, 250.0)),
+    dict(x_range=(10.0, 190.0),   y_range=(-190.0, 190.0), z_range=(10.0, 250.0)),
+    dict(x_range=(-190.0, -10.0), y_range=(-190.0, 100.0), z_range=(250.0, 450.0)),
+    dict(x_range=(10.0, 190.0),   y_range=(-190.0, 190.0), z_range=(250.0, 450.0)),
+]
+
 RAYTRACE_VOLUME_DEFS: list[tuple[str, list[dict]]] = [
     ("FV_split", FV_SPLIT_BOXES),
     ("FV_split_truncY", FV_SPLIT_TRUNCY_BOXES),
+    ("FV_split_truncY_eastonly", FV_SPLIT_TRUNCY_EAST_BOXES),
 ]
 
 RAYTRACE_VOLUME_LABEL: dict[str, str] = {
     "FV_split": r"$10<|x|<190,\;|y|<190,\;10<z<450$",
     "FV_split_truncY": r"$10<|x|<190$: $|y|<190$ ($10<z<250$), $-190<y<100$ ($250<z<450$)",
+    "FV_split_truncY_eastonly": r"$10<|x|<190$: $|y|<190$ ($10<z<250$); East ($x<0$): $-190<y<100$, West ($x>0$): $|y|<190$ ($250<z<450$)",
 }
 
 VOLUMES: dict[str, list[dict]] = dict(RAYTRACE_VOLUME_DEFS)
@@ -34,6 +44,11 @@ FV_SPLIT_VOLUME_CM3: float = 2 * 180.0 * 380.0 * 440.0  # 6.0192e7
 FV_SPLIT_TRUNCY_VOLUME_CM3: float = (
     2 * 180.0 * 380.0 * 240.0 + 2 * 180.0 * 290.0 * 200.0
 )  # 5.3712e7
+FV_SPLIT_TRUNCY_EAST_VOLUME_CM3: float = (
+    2 * 180.0 * 380.0 * 240.0          # both TPCs, low z
+    + 180.0 * 290.0 * 200.0            # East, high z, truncated y
+    + 180.0 * 380.0 * 200.0            # West, high z, full y
+)  # 5.7312e7
 
 # ==== Neutrino energy histogram configs ====
 E_BIN_WIDTH_GEV: float = 0.05
