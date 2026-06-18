@@ -50,7 +50,7 @@ def path_length_box(vx, vy, vz, dx, dy, dz, box):
 
 DEFAULT_GSIMPLE_DIR = (
     "/cvmfs/sbnd.osgstorage.org/pnfs/fnal.gov/usr/sbnd/persistent/stash/"
-    "fluxFiles/bnb/BooNEtoGSimple/configK-v1/july2023/neutrinoMode/"
+    "fluxFiles/bnb/BooNEtoGSimple/configL-v1/oct2023/neutrinoMode/"
 )
 DEFAULT_OUTPUT = "gsimple_flux.pkl"
 
