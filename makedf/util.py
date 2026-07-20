@@ -27,6 +27,8 @@ def InAV(df,det="SBND"):
         xmax = 200
         ymax = 200
         zmax = 500
+    else:
+        raise NameError("DETECTOR not valid for InAV, should be SBND")
     return (df.x > xmin) & (df.x < xmax) & (df.y > ymin) & (df.y < ymax) & (df.z > zmin) & (df.z < zmax)
 
 def InFV(df, inzback, inx=10, iny=10, inzfront=10, det="ICARUS"):
