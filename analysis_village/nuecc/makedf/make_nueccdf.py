@@ -151,10 +151,11 @@ def make_mcnudf_nuecc_sigwgt_ar23p_only(f):
 
 def make_nueccdf_base(f):
     det = loadbranches(f["recTree"], ["rec.hdr.det"]).rec.hdr.det
-    if (1 == det.unique()):
-        DETECTOR = "SBND"
-    else:
-        DETECTOR = "ICARUS"
+    DETECTOR = "SBND"
+    # if (1 == det.unique()):
+    #     DETECTOR = "SBND"
+    # else:
+    #     DETECTOR = "ICARUS"
     
     pfpdf = make_pfpdf(f)
 
@@ -320,8 +321,22 @@ def make_nuecc_df_data_sideband(f):
 
 def make_nuecc_df_data_sideband_debug(f):
     slcdf = make_nueccdf_threshold(f)
-    slcdf = slcdf[slcdf.primshw.shw.reco_energy > 1.0]
+    slcdf = slcdf[slcdf.primshw.shw.conversion_gap > 2]
     slcdf = slcdf[(slcdf.primshw.shw.bestplane_dEdx>3)]
+    return _prepare_nueccdf_data(slcdf, f)
+
+def make_nuecc_df_data_signal(f): 
+    slcdf = make_nueccdf_threshold(f)
+    slcdf = slcdf[(slcdf.primtrk.trk.len < 200) |
+                  (slcdf.primtrk.trk.len.isna())]
+    slcdf = slcdf[(slcdf.primshw.shw.conversion_gap < 2) &
+                  (slcdf.primshw.shw.conversion_gap > 0.001)]
+    slcdf = slcdf[(slcdf.primshw.shw.bestplane_dEdx > 1.25) &
+                  (slcdf.primshw.shw.bestplane_dEdx < 2.5)]
+    slcdf = slcdf[(slcdf.primshw.shw.open_angle > 0.03) & 
+                  (slcdf.primshw.shw.open_angle < 0.15)]
+    slcdf = slcdf[(slcdf.primshw.shw.len > 10) &
+                  (slcdf.primshw.shw.len < 200)]
     return _prepare_nueccdf_data(slcdf, f)
     
 

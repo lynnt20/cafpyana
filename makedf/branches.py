@@ -55,6 +55,9 @@ numipotbranches = [
 ]
 
 bnbpotbranches = [
+    "rec.hdr.bnbinfo.spill_time_nsec",
+    "rec.hdr.bnbinfo.spill_time_sec",
+    "rec.hdr.bnbinfo.event",
     "rec.hdr.bnbinfo.TOR860",
     "rec.hdr.bnbinfo.TOR875",
     "rec.hdr.bnbinfo.FOM",
