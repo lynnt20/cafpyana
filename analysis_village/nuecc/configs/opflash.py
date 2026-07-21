@@ -8,5 +8,6 @@ GRID_PARAMS = {
 }
 
 DFS =   [make_hdrdf, 
-         make_intime_opflash]
-NAMES = ["hdr", "opflash"]
+         make_intime_opflash,
+         make_mcnulite_df_nuecc]
+NAMES = ["hdr", "opflash","nulite"]
