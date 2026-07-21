@@ -7,7 +7,7 @@ GRID_PARAMS = {
 }
 
 DFS =   [make_mcnudf_nuecc_sig,
-         make_nueccdf_mc_wgt, 
+         make_nueccdf_mc, 
          make_hdrdf,
          make_mcnulite_df_nuecc]
 NAMES = ["mcnuecc",
