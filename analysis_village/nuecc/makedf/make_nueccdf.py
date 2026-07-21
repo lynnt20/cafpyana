@@ -286,7 +286,11 @@ def make_nueccdf_threshold(f):
     slcdf = slcdf[slcdf.primshw.shw.reco_energy > 0.5]
     return slcdf
 
-def make_intime_opflash(f):
+def make_intime_opflash_mc(f):
+    opflashdf = make_opflashdf(f)
+    return opflashdf[(opflashdf.time > -10) & (opflashdf.time < 10)]
+
+def make_intime_opflash_data(f):
     opflashdf = make_opflashdf(f)
     framedf = make_framedf(f)[['frameApplyAtCaf']]
     df = pd.merge(opflashdf.reset_index(),
@@ -295,8 +299,7 @@ def make_intime_opflash(f):
                   right_on='entry',
                   how="left")
     df.set_index(opflashdf.index.names, verify_integrity=True, inplace=True)
-    df['time_corr'] = df.time + df.frameApplyAtCaf / 1e3 - 0.19
-    df = df[(df.time_corr > -10) & (df.time_corr < 10)]
+    df = df[(df.time > -10) & (df.time < 10)]
     return df
 
 # ============================================================================
