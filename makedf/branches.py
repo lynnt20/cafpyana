@@ -41,17 +41,10 @@ trigger_info_branches = [
 ]
 
 opflashbranches = [
-    "rec.opflashes.onbeamtime",      
-    "rec.opflashes.cryo",            
-    "rec.opflashes.firstpmt",        
     "rec.opflashes.tpc",             
     "rec.opflashes.time",            
-    "rec.opflashes.timewidth",       
-    "rec.opflashes.timemean",        
-    "rec.opflashes.timesd",          
     "rec.opflashes.firsttime",       
     "rec.opflashes.totalpe",         
-    "rec.opflashes.fasttototal",         
 ]
 
 numipotbranches = [
