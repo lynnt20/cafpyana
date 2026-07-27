@@ -48,6 +48,16 @@ def slc_contained(pfpdf, slcdf, margin=0):
     slcdf = multicol_add(slcdf, slc_tpc1.rename(("slc",'contained',f'margin_{margin}','tpc1')))
     return slcdf
 
+def _add_pfp_list_cols(sub, sort_col, var_map, list_prefix, slcdf):
+    # For each PFP-level column in var_map, aggregate to a per-slice list ordered
+    # by `sort_col` descending (longest / highest energy first) and add to slcdf
+    # under ('slc', list_prefix, output_name).
+    sub = sub.sort_values([sort_col], ascending=False)
+    for name, col in var_map.items():
+        agg = sub[col].groupby(level=[0,1]).agg(list)
+        slcdf = multicol_add(slcdf, agg.rename(('slc', list_prefix, name)))
+    return slcdf
+
 def get_slcminx(pfpdf):
     # get minimum x position of all pfps in the slice as a proxy for distance to the TPC boundary
     # but keep the sign to distinguish proximity to upstream vs downstream boundary
@@ -110,10 +120,10 @@ def make_mcnudf_nuecc_sig(f):
     mcdf = mcdf[signal_mask]
     return mcdf
 
-def make_mcnudf_nuecc_sigwgt(f, int_only=True,**kwargs):
+def make_mcnudf_nuecc_sigwgt(f, int_only=True):
     mcdf = make_mcnudf_nuecc(f)
     mcdf["ind"] = mcdf.index.get_level_values(1)
-    
+
     signal_mask = ((InFV(df=mcdf.position, inzback=0, det="SBND_nu26")) &
                    (mcdf.iscc==1) &
                    (abs(mcdf.pdg)==12) &
@@ -125,25 +135,13 @@ def make_mcnudf_nuecc_sigwgt(f, int_only=True,**kwargs):
         # select first-level groups that contain at least one signal event
         sig_groups = mcdf[signal_mask].index.get_level_values(0).unique()
         mcdf = mcdf[mcdf.index.get_level_values(0).isin(sig_groups)]
-    
+
     if mcdf.empty:
         return mcdf  # skip weight merging if no signal events
-    geniewgtdf = geniesyst.geniesyst(f, 
-                                     mcdf.ind, 
-                                     multisim_nuniv=100, 
-                                     slim=False, 
-                                     systematics=None,
-                                     **kwargs)
+    geniewgtdf = geniesyst.geniesyst(f, mcdf.ind, multisim_nuniv=100, slim=False)
     mcdf = multicol_concat(mcdf, geniewgtdf)
     return mcdf
 
-def make_mcnudf_nuecc_sigwgt_ar23p(f):
-    # get ar23p weights for all interactions with a signal event 
-    return make_mcnudf_nuecc_sigwgt(f, int_only=True,ar23p=True)
-
-def make_mcnudf_nuecc_sigwgt_ar23p_only(f):
-    # get ar23p weights for all interactions with a signal event 
-    return make_mcnudf_nuecc_sigwgt(f, int_only=False,ar23p_only=True)
 
 # ============================================================================
 # Base selection functions (call hierarchy)
@@ -267,6 +265,54 @@ def make_nueccdf_base(f):
     trkdf = trkdf.drop('shw',axis=1,level=1)
     trkdf.columns = trkdf.columns.set_levels(['primtrk'],level=0)
     slcdf = multicol_merge(slcdf, trkdf.droplevel(-1),left_index=True,right_index=True,how="left",validate="one_to_one")
+
+    # per-slice inspection lists: track PFPs ordered by length, shower PFPs by energy
+    trk_sub = pfpdf[istrk].copy()
+    trk_sub[('pfp','trk','phi','','','')] = (
+        np.arctan2(trk_sub.pfp.trk.dir.x, trk_sub.pfp.trk.dir.y) * 180/np.pi
+    )
+    trk_list_vars = {
+        'len':         ('pfp','trk','len','','',''),
+        'start_x':     ('pfp','trk','start','x','',''),
+        'start_y':     ('pfp','trk','start','y','',''),
+        'start_z':     ('pfp','trk','start','z','',''),
+        'end_x':       ('pfp','trk','end','x','',''),
+        'end_y':       ('pfp','trk','end','y','',''),
+        'end_z':       ('pfp','trk','end','z','',''),
+        'dir_x':       ('pfp','trk','dir','x','',''),
+        'dir_y':       ('pfp','trk','dir','y','',''),
+        'dir_z':       ('pfp','trk','dir','z','',''),
+        'phi':         ('pfp','trk','phi','','',''),
+        'chi2_muon':   ('pfp','trk','chi2pid','avg','chi2_muon',''),
+        'chi2_proton': ('pfp','trk','chi2pid','avg','chi2_proton',''),
+    }
+    slcdf = _add_pfp_list_cols(trk_sub, ('pfp','trk','len','','',''),
+                               trk_list_vars, 'trklist', slcdf)
+
+    shw_sub = pfpdf[isshw].copy()
+    shw_sub[('pfp','shw','phi','','','')] = (
+        np.arctan2(shw_sub.pfp.shw.dir.x, shw_sub.pfp.shw.dir.y) * 180/np.pi
+    )
+    shw_list_vars = {
+        'maxplane_energy': ('pfp','shw','maxplane_energy','','',''),
+        'open_angle':      ('pfp','shw','open_angle','','',''),
+        'conversion_gap':  ('pfp','shw','conversion_gap','','',''),
+        'bestplane_dEdx':  ('pfp','shw','bestplane_dEdx','','',''),
+        'density':         ('pfp','shw','density','','',''),
+        'len':             ('pfp','shw','len','','',''),
+        'start_x':         ('pfp','shw','start','x','',''),
+        'start_y':         ('pfp','shw','start','y','',''),
+        'start_z':         ('pfp','shw','start','z','',''),
+        'end_x':           ('pfp','shw','end','x','',''),
+        'end_y':           ('pfp','shw','end','y','',''),
+        'end_z':           ('pfp','shw','end','z','',''),
+        'dir_x':           ('pfp','shw','dir','x','',''),
+        'dir_y':           ('pfp','shw','dir','y','',''),
+        'dir_z':           ('pfp','shw','dir','z','',''),
+        'phi':             ('pfp','shw','phi','','',''),
+    }
+    slcdf = _add_pfp_list_cols(shw_sub, ('pfp','shw','maxplane_energy','','',''),
+                               shw_list_vars, 'shwlist', slcdf)
 
     # add a shower energy variable that applies a scale factor to the max plane energy of the primary shower candidate
     shower_scale=1.17
@@ -416,7 +462,7 @@ def make_nueccdf_threshold_mc(f):
 # Systematic weights helper
 # ============================================================================
 
-def _add_weights_to_nueccdf(df, f, multisim_nuniv=100, slim=False, wgt_types=["bnb", "genie", "g4"], ar23p=False):
+def _add_weights_to_nueccdf(df, f, multisim_nuniv=100, slim=False, wgt_types=["bnb", "genie", "g4"]):
     """
     Helper function to add systematic weights to a neutrino CC DataFrame.
     
@@ -431,8 +477,8 @@ def _add_weights_to_nueccdf(df, f, multisim_nuniv=100, slim=False, wgt_types=["b
     slim : bool, optional
         Whether to slim the output (default: False)
     wgt_types : list, optional
-        List of weight types to include, e.g. ["bnb", "genie"] (default: ["bnb", "genie"])
-    
+        List of weight types to include, e.g. ["bnb", "genie", "g4", "fsi"] (default: ["bnb", "genie", "g4"])
+
     Returns
     -------
     pandas.DataFrame
@@ -449,12 +495,10 @@ def _add_weights_to_nueccdf(df, f, multisim_nuniv=100, slim=False, wgt_types=["b
     wgt_dfs = []
     
     if "genie" in wgt_types:
-        geniewgtdf = geniesyst.geniesyst(f, 
-                                         nu_indices, 
-                                         multisim_nuniv=multisim_nuniv, 
-                                         slim=slim, 
-                                         systematics=None,
-                                         ar23p=ar23p)
+        geniewgtdf = geniesyst.geniesyst(f,
+                                         nu_indices,
+                                         multisim_nuniv=multisim_nuniv,
+                                         slim=slim)
         if geniewgtdf is not None and geniewgtdf.shape[1] > 0:
             wgt_dfs.append(geniewgtdf)
     
@@ -519,20 +563,8 @@ def _add_weights_to_nueccdf(df, f, multisim_nuniv=100, slim=False, wgt_types=["b
 # ============================================================================
 
 def make_nueccdf_mc_wgt(f, multisim_nuniv=100, slim=False, **kwargs):
-    """
-    Base selection with MC truth and systematic weights.
-    Weights are calculated for selected indices only to reduce overhead.
-    """
     df = make_nueccdf_mc(f)
     return _add_weights_to_nueccdf(df, f, multisim_nuniv=multisim_nuniv, slim=slim, **kwargs)
-
-def make_nueccdf_mc_wgt_ar23(f, multisim_nuniv=100, slim=False, **kwargs):
-    """
-    Base selection with MC truth and systematic weights.
-    Weights are calculated for selected indices only to reduce overhead.
-    """
-    df = make_nueccdf_mc(f)
-    return _add_weights_to_nueccdf(df, f, multisim_nuniv=multisim_nuniv, slim=slim, ar23p=True,**kwargs)
 
 def make_nueccdf_mc_wgt_fsi(f, multisim_nuniv=100, slim=False, **kwargs):
     """Base selection with MC truth, systematic weights, and hA2025 FSI reweight."""

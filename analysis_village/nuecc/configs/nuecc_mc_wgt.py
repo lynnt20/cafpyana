@@ -9,8 +9,10 @@ GRID_PARAMS = {
 DFS =   [make_mcnudf_nuecc_sig,
          make_nueccdf_mc_wgt, 
          make_hdrdf,
-         make_mcnulite_df_nuecc]
+         make_mcnulite_df_nuecc,
+         make_intime_opflash_mc]
 NAMES = ["mcnuecc",
          "nuecc",
          "hdr",
-         "nulite"]
+         "nulite",
+         "intime_opflash"]

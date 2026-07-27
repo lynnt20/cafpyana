@@ -59,11 +59,6 @@ JOBS=(
     # "mc_intime"
     # "200"
     
-    # # ar23 MC
-    # "analysis_village/nuecc/file_lists/mc_nominal_ar23.paths"
-    # "analysis_village/nuecc/configs/nuecc_mc_wgt_ar23p.py"
-    # "mc_ar23"
-    # "200"
 
     # MC no systs 
     "analysis_village/nuecc/file_lists/mc_nominal_ar23.paths"
